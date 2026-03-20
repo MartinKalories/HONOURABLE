@@ -77,10 +77,10 @@ num_preds = 100  # -1 for all
 do_subset_on_read = False
 
 # Output settings
-save_model = False
-save_preds = False
+save_model = True
+save_preds = True
 doplotting = True
-save_movie = False #True
+save_movie = True #True
 
 # Model parameters
 pdict = {}
@@ -528,6 +528,7 @@ if doplotting:
         plt.xlabel('Epoch')
         plt.legend(['Train', 'Test'], loc='upper left')
         plt.show()
+        
 
     # Look at results
     num_testims = 10#00
