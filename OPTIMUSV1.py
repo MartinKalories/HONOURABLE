@@ -28,7 +28,7 @@ import time
 import datetime
 
 # Data directories
-datadir = '~/PL-NN-testdata_forDec2025/'
+datadir = '/home/manav//PL-NN-testdata_forDec2025/'
 # datadir = '/home/bnorris/Data/PL/20240605_labdata_subset/'
 slmdatadir = datadir
 outdir = datadir
