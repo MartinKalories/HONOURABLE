@@ -69,10 +69,10 @@ remove_clock = True
 
 # Training parameters
 keep_orig_psfs = False
-stat_frms = 1000# 10000  # How many frames to use for normalisation statistics
+stat_frms = 10000# 10000  # How many frames to use for normalisation statistics
 testdatasplit = 0.2
 shuffle_before_split = False  # Should be false for time-correlated data
-use_subset = 1000 # set to None to use all frames
+use_subset = None # set to None to use all frames
 num_preds = 100  # -1 for all
 do_subset_on_read = False
 
@@ -89,7 +89,7 @@ pdict['batchSize'] = 32
 pdict['learningRate'] = 0.00011219438754796004
 pdict['lossFunc_psf'] = 'mean_squared_error'
 pdict['lossFunc_wf'] = 'mean_squared_error'
-pdict['epochs'] = 3
+pdict['epochs'] = 100
 pdict['dropout_rate'] = 0.1
 pdict['dropout_rate_dense'] = 0.3
 pdict['dropout_rate_psf'] = 0.3
@@ -372,7 +372,7 @@ space = [
     Integer(2048, 4096, name="n_units_dense"),
 ]
 
-TUNE_EPOCHS = 5
+TUNE_EPOCHS = 100
 
 @use_named_args(space)
 def objective(learningRate, dropout_rate, n_units_dense):
