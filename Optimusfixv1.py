@@ -69,10 +69,10 @@ remove_clock = True
 
 # Training parameters
 keep_orig_psfs = False
-stat_frms = 10000# 10000  # How many frames to use for normalisation statistics
+stat_frms = 1000# 10000  # How many frames to use for normalisation statistics
 testdatasplit = 0.2
 shuffle_before_split = False  # Should be false for time-correlated data
-use_subset = None # set to None to use all frames
+use_subset = 10000 # set to None to use all frames
 num_preds = 100  # -1 for all
 do_subset_on_read = False
 
