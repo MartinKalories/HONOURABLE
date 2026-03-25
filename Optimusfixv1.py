@@ -372,7 +372,7 @@ space = [
     Integer(2048, 4096, name="n_units_dense"),
 ]
 
-TUNE_EPOCHS = 25
+TUNE_EPOCHS = 10
 
 @use_named_args(space)
 def objective(learningRate, dropout_rate, n_units_dense):
