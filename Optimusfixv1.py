@@ -89,7 +89,7 @@ pdict['batchSize'] = 32
 pdict['learningRate'] = 0.00011219438754796004
 pdict['lossFunc_psf'] = 'mean_squared_error'
 pdict['lossFunc_wf'] = 'mean_squared_error'
-pdict['epochs'] = 50
+pdict['epochs'] = 75
 pdict['dropout_rate'] = 0.1
 pdict['dropout_rate_dense'] = 0.3
 pdict['dropout_rate_psf'] = 0.3
@@ -372,7 +372,7 @@ space = [
     Integer(2048, 4096, name="n_units_dense"),
 ]
 
-TUNE_EPOCHS = 5
+TUNE_EPOCHS = 10
 
 @use_named_args(space)
 def objective(learningRate, dropout_rate, n_units_dense):
