@@ -89,7 +89,7 @@ pdict['batchSize'] = 32
 pdict['learningRate'] = 0.00011219438754796004
 pdict['lossFunc_psf'] = 'mean_squared_error'
 pdict['lossFunc_wf'] = 'mean_squared_error'
-pdict['epochs'] = 75
+pdict['epochs'] = 100
 pdict['dropout_rate'] = 0.1
 pdict['dropout_rate_dense'] = 0.3
 pdict['dropout_rate_psf'] = 0.3
@@ -531,7 +531,7 @@ if doplotting:
         
 
     # Look at results
-    num_testims = 10#00
+    num_testims = 100#0
     wf_true = y_test_wf[:num_testims, :, :]
     wf_pred = predictions_wf[:num_testims, :, :]
     psf_true = y_test_psf[:num_testims, :, :]
