@@ -20,8 +20,8 @@ import time
 import datetime
 
 # Data directories
-datadir = '/home/manav//PL-NN-testdata_forDec2025/'
-# datadir = '/home/bnorris/Data/PL/20240605_labdata_subset/'
+#datadir = '/home/manav//PL-NN-testdata_forDec2025/'
+datadir = '/Users/manavkalra/Downloads/PL-NN-testdata_forDec2025/'
 slmdatadir = datadir
 outdir = datadir
 
