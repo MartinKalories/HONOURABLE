@@ -23,7 +23,7 @@ import datetime
 
 # Data directories
 datadir = '/Users/manavkalra/Downloads/PL-NN-testdata_forDec2025/'
-# datadir = '/home/bnorris/Data/PL/20240605_labdata_subset/'
+#datadir = '/home/manav//PL-NN-testdata_forDec2025/' use this one for HPC
 slmdatadir = datadir
 outdir = datadir
 
@@ -71,10 +71,10 @@ num_preds = 100  # -1 for all
 do_subset_on_read = False
 
 # Output settings
-save_model = False
-save_preds = False
+save_model = True
+save_preds = True
 doplotting = True
-save_movie = False #True
+save_movie = True #True
 
 # Model parameters
 pdict = {}
