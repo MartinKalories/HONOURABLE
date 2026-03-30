@@ -1,4 +1,3 @@
-
 try:
     import tensorflow as tf
     from tensorflow import keras
@@ -6,6 +5,9 @@ try:
     from tensorflow.keras.callbacks import ReduceLROnPlateau
     from tensorflow.keras.models import Model
     from tensorflow.keras.layers import Input, Conv2D, UpSampling2D, Flatten, Dense, Reshape, Dropout, MaxPooling2D, Resizing
+    import matplotlib.animation as animation
+    import shutil
+
 except ImportError:
     print('Warning - COULD NOT IMPORT TENSORFLOW')
 import numpy as np
@@ -20,8 +22,8 @@ import time
 import datetime
 
 # Data directories
-#datadir = '/home/manav//PL-NN-testdata_forDec2025/'
 datadir = '/Users/manavkalra/Downloads/PL-NN-testdata_forDec2025/'
+# datadir = '/home/bnorris/Data/PL/20240605_labdata_subset/'
 slmdatadir = datadir
 outdir = datadir
 
@@ -64,7 +66,7 @@ keep_orig_psfs = False
 stat_frms = 1000# 10000  # How many frames to use for normalisation statistics
 testdatasplit = 0.2
 shuffle_before_split = False  # Should be false for time-correlated data
-use_subset = 10000 #None # set to None to use all frames
+use_subset = 10000 # set to None to use all frames
 num_preds = 100  # -1 for all
 do_subset_on_read = False
 
@@ -81,7 +83,7 @@ pdict['batchSize'] = 32
 pdict['learningRate'] = 1e-5
 pdict['lossFunc_psf'] = 'mean_squared_error'
 pdict['lossFunc_wf'] = 'mean_squared_error'
-pdict['epochs'] = 2
+pdict['epochs'] = 3
 pdict['dropout_rate'] = 0.1
 pdict['dropout_rate_dense'] = 0.3
 pdict['dropout_rate_psf'] = 0.3
@@ -91,7 +93,7 @@ pdict['ksz_wf'] = 5
 pdict['nfilts_enc'] = 96
 pdict['nfilts_psf'] = 64
 pdict['nfilts_wf'] = 64
-pdict['loss_weight'] = 2  # >1 to weight PSF higher
+pdict['loss_weight'] = 1  # >1 to weight PSF higher
 pdict['n_units_dense'] = 2048
 pdict['enable_lr_sched'] = False
 pdict['reduceLR_start'] = 1e-4
@@ -414,5 +416,3 @@ if doplotting:
             writer.grab_frame()
     if save_movie:
         writer.finish()
-
-print("Training and prediction completed successfully!")
