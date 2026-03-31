@@ -32,7 +32,7 @@ trial_log = []
 @use_named_args(space)
 def objective(**params):
     result = train_one_run(
-        pdict_override=params,
+        pdict_override=None,
         do_predictions=False,
         do_plotting=False,
         save_model=False,
