@@ -285,7 +285,7 @@ def build_model(pdict, Xndims, yndims_psf, yndims_wf):
         model_enc = Dense(pdict['n_units_dense'], activation=pdict['actFunc'])(model_enc)
         model_enc = Dropout(pdict['dropout_rate_dense'])(model_enc)
         model_enc = Dense(pdict['n_units_dense'], activation=pdict['actFunc'])(model_enc)
-        model_enc = Dense(np.prod(post_dense_shape), activation=pdict['actFunc'])(model_enc)
+        model_enc = Dense(int(np.prod(post_dense_shape)), activation=pdict['actFunc'])(model_enc)
         model_enc = Reshape(post_dense_shape)(model_enc)
 
     # PSF decoder
