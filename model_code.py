@@ -366,7 +366,7 @@ def build_model(pdict, Xndims, yndims_psf, yndims_wf):
 
 
 def train_one_run(
-    pdict_override=params, # for optimiser run params, for regular = none
+    pdict_override= None, # for optimiser run params, for regular = none
     do_predictions=False,
     do_plotting=False,
     save_model=False,
