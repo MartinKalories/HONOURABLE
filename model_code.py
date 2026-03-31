@@ -27,7 +27,8 @@ plt.ion()
 # ------------------------------------------------------------------
 # Static config
 # ------------------------------------------------------------------
-datadir = '/Users/manavkalra/Downloads/PL-NN-testdata_forDec2025/'
+#datadir = '/Users/manavkalra/Downloads/PL-NN-testdata_forDec2025/'
+datadir = '/home/manav//PL-NN-testdata_forDec2025/'
 slmdatadir = datadir
 outdir = datadir
 
