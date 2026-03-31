@@ -474,9 +474,9 @@ if __name__ == "__main__":
         pdict_override=None,
         do_predictions=True,
         do_plotting=True,
-        save_model=False,
-        save_preds=False,
-        save_movie=False,
+        save_model=True,
+        save_preds=True,
+        save_movie=True,
         verbose=1,
     )
     print("Best val_loss seen in run:", result["objective_val_loss"])
