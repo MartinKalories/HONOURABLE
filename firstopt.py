@@ -368,11 +368,11 @@ def build_model(pdict, Xndims, yndims_psf, yndims_wf):
 
 def train_one_run(
     pdict_override= None, # for optimiser run params, for regular = none
-    do_predictions=False,
-    do_plotting=False,
-    save_model=False,
-    save_preds=False,
-    save_movie=False,
+    do_predictions=True,
+    do_plotting=True,
+    save_model=True,
+    save_preds=True,
+    save_movie=True,
     verbose=0,
 ):
     pdict = get_base_pdict()
