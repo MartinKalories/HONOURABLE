@@ -67,7 +67,7 @@ BASE_PDICT = {
     'learningRate': 1.39e-05,
     'lossFunc_psf': 'mean_squared_error',
     'lossFunc_wf': 'mean_squared_error',
-    'epochs': 30,
+    'epochs': 100,
     'dropout_rate': 0.1393,
     'dropout_rate_dense': 0.565,
     'dropout_rate_psf': 0.024,
