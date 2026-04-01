@@ -435,7 +435,12 @@ def train_one_run(
         predictions_wf = predictions[1]
 
     if do_plotting:
-        plt.figure(1)
+        timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M")
+
+        loss_path = datadir + save_filename_pref + timestamp + "_loss-curve.png"
+        movie_path = datadir + save_filename_pref + timestamp + "_preds-movie.mp4"
+
+        lossfig = plt.figure(1)
         plt.clf()
         plt.plot(history_loss)
         plt.plot(history_val_loss)
@@ -443,8 +448,8 @@ def train_one_run(
         plt.ylabel('Loss')
         plt.xlabel('Epoch')
         plt.legend(['Train', 'Test'], loc='upper left')
-        
-        plt.savefig(datadir + "loss_curve.png", dpi=300, bbox_inches="tight")
+        lossfig.savefig(loss_path, dpi=300, bbox_inches="tight")
+        print("Saved loss curve to:", loss_path)
         plt.show()
 
         num_testims = 10
@@ -457,10 +462,10 @@ def train_one_run(
         fig = plt.figure(2, figsize=(9, 8))
 
         if save_movie:
-            moviefilename = datadir + "preds_movie.mp4"
             Writer = animation.writers['ffmpeg']
             writer = Writer(fps=10, metadata=dict(artist='pl'), bitrate=1800)
-            writer.setup(fig, moviefilename, dpi=100)
+            writer.setup(fig, movie_path, dpi=100)
+            print("Saving movie to:", movie_path)
 
         for k in np.arange(0, num_testims, 1):
             plot_truepredims(
@@ -473,6 +478,7 @@ def train_one_run(
 
         if save_movie:
             writer.finish()
+            print("Saved movie to:", movie_path)
 
     return {
         "objective_val_loss": objective_val_loss,
