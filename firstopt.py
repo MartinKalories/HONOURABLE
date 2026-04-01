@@ -368,11 +368,11 @@ def build_model(pdict, Xndims, yndims_psf, yndims_wf):
 
 def train_one_run(
     pdict_override= None, # for optimiser run params, for regular = none
-    do_predictions=True,
-    do_plotting=True,
-    save_model=True,
-    save_preds=True,
-    save_movie=True,
+    do_predictions=False,
+    do_plotting=False,
+    save_model=False,
+    save_preds=False,
+    save_movie=False,
     verbose=0,
 ):
     pdict = get_base_pdict()
@@ -443,8 +443,9 @@ def train_one_run(
         plt.ylabel('Loss')
         plt.xlabel('Epoch')
         plt.legend(['Train', 'Test'], loc='upper left')
-        plt.show()
+        
         plt.savefig(datadir + "loss_curve.png", dpi=300, bbox_inches="tight")
+        plt.show()
 
         num_testims = 10
         wf_true = y_test_wf[:num_testims, :, :]
