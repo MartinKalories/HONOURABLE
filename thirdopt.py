@@ -57,7 +57,7 @@ keep_orig_psfs = False
 stat_frms = 1000
 testdatasplit = 0.2
 shuffle_before_split = False
-use_subset = 10000
+use_subset = None
 num_preds = 100
 do_subset_on_read = False
 
