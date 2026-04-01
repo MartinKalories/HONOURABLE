@@ -444,6 +444,7 @@ def train_one_run(
         plt.xlabel('Epoch')
         plt.legend(['Train', 'Test'], loc='upper left')
         plt.show()
+        plt.savefig(datadir + "loss_curve.png", dpi=300, bbox_inches="tight")
 
         num_testims = 10
         wf_true = y_test_wf[:num_testims, :, :]
