@@ -454,12 +454,24 @@ def train_one_run(
         cur_psf_true_og = None
 
         fig = plt.figure(2, figsize=(9, 8))
+
+        if save_movie:
+            moviefilename = datadir + "preds_movie.mp4"
+            Writer = animation.writers['ffmpeg']
+            writer = Writer(fps=10, metadata=dict(artist='pl'), bitrate=1800)
+            writer.setup(fig, moviefilename, dpi=100)
+
         for k in np.arange(0, num_testims, 1):
             plot_truepredims(
                 wf_true[k, :, :], wf_pred[k, :, :],
                 psf_true[k, :, :], psf_pred[k, :, :],
                 camera_im=cur_psf_true_og, pausetime=1
             )
+            if save_movie:
+                writer.grab_frame()
+
+        if save_movie:
+            writer.finish()
 
     return {
         "objective_val_loss": objective_val_loss,
