@@ -6,7 +6,7 @@ from skopt import gp_minimize
 from skopt.space import Real, Integer, Categorical
 from skopt.utils import use_named_args
 
-from model_code import train_one_run, get_base_pdict
+from 1stopt import train_one_run, get_base_pdict
 
 
 space = [
