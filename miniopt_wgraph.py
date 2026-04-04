@@ -182,8 +182,8 @@ def main():
         res = gp_minimize(
             func=objective,
             dimensions=space,
-            n_calls=15,
-            n_initial_points=5,
+            n_calls=30,
+            n_initial_points=10,
             acq_func='EI',
             random_state=42,
             callback=[VerboseCallback(n_total=15)]
