@@ -52,8 +52,8 @@ def main():
     res = gp_minimize(
         func=objective,
         dimensions=space,
-        n_calls=35,
-        n_initial_points=10,
+        n_calls=15,
+        n_initial_points=5,
         acq_func='EI',
         random_state=42
     )
