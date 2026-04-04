@@ -23,7 +23,7 @@ trial_log = []
 @use_named_args(space)
 def objective(**params):
     result = train_one_run(
-        pdict_override=None,
+        pdict_override=params,
         do_predictions=False,
         do_plotting=False,
         save_model=False,
@@ -35,13 +35,14 @@ def objective(**params):
     objective_val = float(result["objective_val_loss"])
 
     trial_log.append({
+        "trial": len(trial_log) + 1,
         "params": copy.deepcopy(result["pdict"]),
         "objective_val_loss": objective_val,
         "final_val_loss": float(result["final_val_loss"]),
         "history_val_loss": [float(x) for x in result["history_val_loss"]],
     })
 
-    print(f"Trial objective (min val_loss): {objective_val:.8f}")
+    print(f"Trial {len(trial_log)} objective (min val_loss): {objective_val:.8f}")
     print(f"Params: {params}")
     print("-" * 60)
 
