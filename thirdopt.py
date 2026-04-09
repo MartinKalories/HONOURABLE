@@ -86,7 +86,7 @@ BASE_PDICT = {
     'reduceLR_min_lr': 1e-6,
     'reduceLR_cooldown': 5,
 }
-}
+
 
 _DATA_CACHE = None
 
