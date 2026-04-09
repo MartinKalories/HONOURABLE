@@ -28,7 +28,7 @@ space = [
     Real(1e-5, 5e-3, prior='log-uniform', name='learningRate'),
     Real(0.0, 0.4, name='dropout_rate'),
     Real(0.0, 0.6, name='dropout_rate_dense'),
-    Real(0.0, 0.6, name='dropout_rate_psf'),
+    Real(0.0, 0.8, name='dropout_rate_psf'),
     Integer(512, 4096, name='n_units_dense'),
 ]
 
