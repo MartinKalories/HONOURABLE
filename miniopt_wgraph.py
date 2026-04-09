@@ -5,13 +5,16 @@ import pickle
 import datetime
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
 from skopt import gp_minimize
 from skopt.space import Real, Integer
 from skopt.utils import use_named_args
 from skopt.callbacks import VerboseCallback
 
-from thirdopt import train_one_run, get_base_pdict
+from thirdopt import train_one_run, get_base_pdict, datadir
+save_dir = datadir
+os.makedirs(save_dir, exist_ok=True)
 
 
 # ------------------------------------------------------------
@@ -82,7 +85,7 @@ def save_trial_log_csv(trial_log, filename):
 
 
 def save_best_results(best_pdict, best_loss, trial_log, prefix):
-    with open(f"{prefix}_best_results.json", "w") as f:
+    with open(os.path.join(save_dir, f"{prefix}_best_results.json"), "w") as f:
         json.dump(
             make_json_safe({
                 "best_objective_val_loss": float(best_loss),
@@ -93,14 +96,13 @@ def save_best_results(best_pdict, best_loss, trial_log, prefix):
             indent=2,
         )
 
-    np.savez(
-        f"{prefix}_best_results.npz",
+   with open(os.path.join(save_dir, f"{prefix}_best_results.json"), "w") as f:,
         best_objective_val_loss=float(best_loss),
         best_params=np.array([best_pdict], dtype=object),
         all_trials=np.array(trial_log, dtype=object),
     )
 
-    save_trial_log_csv(trial_log, f"{prefix}_all_trials.csv")
+    save_trial_log_csv(trial_log, os.path.join(save_dir, f"{prefix}_all_trials.csv")))
 
 
 def save_skopt_result(res, prefix):
@@ -129,7 +131,7 @@ def update_live_plot():
     fig_live.canvas.flush_events()
     plt.pause(0.01)
 
-    fig_live.savefig(f"{run_prefix}_live_progress.png", dpi=300, bbox_inches="tight")
+    fig_live.savefig(os.path.join(save_dir, f"{run_prefix}_live_progress.png"), dpi=300, bbox_inches="tight")
 
 
 @use_named_args(space)
@@ -159,9 +161,9 @@ def objective(**params):
     live_min_losses.append(min(live_losses))
     update_live_plot()
 
-    save_trial_log_csv(trial_log, f"{run_prefix}_all_trials.csv")
+    save_trial_log_csv(trial_log, os.path.join(save_dir, f"{run_prefix}_all_trials.csv"))
     np.savez(
-        f"{run_prefix}_all_trials.npz",
+        os.path.join(save_dir, f"{run_prefix}_all_trials.npz"),,
         all_trials=np.array(trial_log, dtype=object),
         live_losses=np.array(live_losses),
         live_min_losses=np.array(live_min_losses),
@@ -220,7 +222,7 @@ def main():
         save_skopt_result(res, run_prefix)
         save_best_results(best_pdict, float(res.fun), trial_log, run_prefix)
 
-        fig_live.savefig(f"{run_prefix}_final_progress.png", dpi=300, bbox_inches="tight")
+        fig_live.savefig(os.path.join(save_dir, f"{run_prefix}_final_progress.png"), dpi=300, bbox_inches="tight")
 
     plt.ioff()
     plt.show()
