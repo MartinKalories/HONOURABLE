@@ -64,7 +64,7 @@ do_subset_on_read = False
 BASE_PDICT = {
     'actFunc': 'relu',
     'batchSize': 16,
-    "learningRate": 0.0001097052924574919,
+    "learningRate": 6.814073755185045e-05,
     "lossFunc_psf": "mean_squared_error",
     "lossFunc_wf": "mean_squared_error",
     "epochs": 10,
