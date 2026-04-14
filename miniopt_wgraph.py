@@ -29,7 +29,7 @@ space = [
     Real(0.0, 0.4, name='dropout_rate'),
     Real(0.0, 0.6, name='dropout_rate_dense'),
     Real(0.0, 0.8, name='dropout_rate_psf'),
-    Integer(512, 3000, name='n_units_dense'),
+    Integer(512, 2500, name='n_units_dense'),
 ]
 
 trial_log = []
