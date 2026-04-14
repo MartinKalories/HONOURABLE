@@ -78,7 +78,7 @@ BASE_PDICT = {
     'nfilts_psf': 64,
     'nfilts_wf': 96,
     'loss_weight': 0.549,
-    'n_units_dense': 1024,
+    'n_units_dense': 2048,
     'enable_lr_sched': False,
     'reduceLR_start': 1e-4,
     'reduceLR_factor': 0.5,
