@@ -26,10 +26,9 @@ os.makedirs(save_dir, exist_ok=True)
 # ------------------------------------------------------------
 space = [
     Real(1e-5, 1e-4, prior='log-uniform', name='learningRate'),
-    Real(0.0, 0.15, name='dropout_rate'),
+    Real(0.02, 0.15, name='dropout_rate'),
     Real(0.0, 0.32, name='dropout_rate_dense'),
     Real(0.0, 0.8, name='dropout_rate_psf'),
-    Integer(512, 2500, name='n_units_dense'),
 ]
 
 trial_log = []
