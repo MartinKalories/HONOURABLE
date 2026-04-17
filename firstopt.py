@@ -1,504 +1,374 @@
-import copy
-import time
-import datetime
-import platform
-import matplotlib.animation as animation
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+from typing import Iterable
+
 import numpy as np
-
-try:
-    import tensorflow as tf
-    from tensorflow import keras
-    from tensorflow.keras.callbacks import ReduceLROnPlateau
-    from tensorflow.keras.models import Model
-    from tensorflow.keras.layers import (
-        Input, Conv2D, UpSampling2D, Flatten, Dense, Reshape,
-        Dropout, MaxPooling2D, Resizing
-    )
-except ImportError:
-    print("Warning - COULD NOT IMPORT TENSORFLOW")
-
-import matplotlib
-os_name = platform.system()
-if 'Linux' in os_name:
-    matplotlib.use('TkAgg')
+import pandas as pd
 import matplotlib.pyplot as plt
-plt.ion()
+from scipy.stats import gaussian_kde
 
-# ------------------------------------------------------------------
-# Static config
-# ------------------------------------------------------------------
-#datadir = '/Users/manavkalra/Downloads/PL-NN-testdata_forDec2025/'
-datadir = '/home/manav//PL-NN-testdata_forDec2025/'
-slmdatadir = datadir
-outdir = datadir
-
-save_filename_pref = 'pl2wf2psf_data202407_model01_'
-
-load_precombined_PLims_filename = 'pllabdata_20240605_singlepsf_01_slmcube_20240605_seeing_0.4-10-scl1_rand_10K_01_files-combined'
-precombined_psf_filename = None
-load_precombined_wfims_filename = 'slmcube_20240605_seeing_0.4-10-scl1_rand_10K_01_files-combined'
-
-addnoise_PL = None
-addnoise_PSF = None
-addnoise_WF = None
-
-plim_cropcnt = [80, 103]
-plim_cropsz = 128
-mask_pupil = True
-rescale_wfim = 0.188
-convert_slm2rad = True
-slmrange = 4*np.pi
-psfim_cropcnt = [139, 134]
-psfim_cropsz = 48
-rescale_psfim = 2
-remove_clock = True
-
-keep_orig_psfs = False
-stat_frms = 1000
-testdatasplit = 0.2
-shuffle_before_split = False
-use_subset = 10000
-num_preds = 100
-do_subset_on_read = False
-
-BASE_PDICT = {
-    'actFunc': 'relu',
-    'batchSize': 16,
-    'learningRate': 2.94e-05,
-    'lossFunc_psf': 'mean_squared_error',
-    'lossFunc_wf': 'mean_squared_error',
-    'epochs': 30,
-    'dropout_rate': 0.156,
-    'dropout_rate_dense': 0.109,
-    'dropout_rate_psf': 0.4532,
-    'ksz_enc': 5,
-    'ksz_psf': 3,
-    'ksz_wf': 5,
-    'nfilts_enc': 96,
-    'nfilts_psf': 64,
-    'nfilts_wf': 96,
-    'loss_weight': 2.32,
-    'n_units_dense': 2036,
-    'enable_lr_sched': False,
-    'reduceLR_start': 1e-4,
-    'reduceLR_factor': 0.5,
-    'reduceLR_patience': 5,
-    'reduceLR_min_lr': 1e-6,
-    'reduceLR_cooldown': 5,
+DATA_DIR = Path("/home/manav/PL-NN-testdata_forDec2025/")
+DEFAULT_CSV = "bayesopt_20260416-1046_all_trials.csv"
+DEFAULT_EXCLUDE = {
+    "trial",
+    "objective_val_loss",
+    "final_val_loss",
+    "run_date",
+    "run_time",
 }
 
-_DATA_CACHE = None
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Make a smoother corner plot from a Bayesian optimisation trials CSV."
+    )
+    parser.add_argument(
+        "--csv",
+        default=DEFAULT_CSV,
+        help=(
+            "CSV filename or full path. If only a filename is given, it is looked for inside "
+            f"{DATA_DIR}"
+        ),
+    )
+    parser.add_argument(
+        "--out",
+        default=None,
+        help=(
+            "Output PNG filename or full path. If omitted, saves as <csv_stem>_corner_kde.png "
+            f"inside {DATA_DIR}"
+        ),
+    )
+    parser.add_argument(
+        "--cols",
+        nargs="+",
+        default=None,
+        help="Columns to include. If omitted, varying numeric columns are auto-detected.",
+    )
+    parser.add_argument(
+        "--target",
+        default="objective_val_loss",
+        help="Loss column used to rank and highlight best trials.",
+    )
+    parser.add_argument(
+        "--log-cols",
+        nargs="*",
+        default=["learningRate"],
+        help="Columns to convert to log10 before plotting. Default: learningRate",
+    )
+    parser.add_argument(
+        "--top-n",
+        type=int,
+        default=3,
+        help="Highlight the best N trials. Default: 3",
+    )
+    parser.add_argument(
+        "--bins",
+        type=int,
+        default=18,
+        help="Histogram bins on the diagonal. Default: 18",
+    )
+    parser.add_argument(
+        "--figscale",
+        type=float,
+        default=2.7,
+        help="Figure size scale per variable. Default: 2.7",
+    )
+    parser.add_argument(
+        "--levels",
+        type=int,
+        default=6,
+        help="Number of KDE contour levels. Default: 6",
+    )
+    parser.add_argument(
+        "--jitter-frac",
+        type=float,
+        default=0.015,
+        help="Small fractional jitter added to discrete columns for KDE stability. Default: 0.015",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="Random seed for reproducible jitter. Default: 42",
+    )
+    parser.add_argument(
+        "--no-kde",
+        action="store_true",
+        help="Disable KDE contours and just show scatter + histograms.",
+    )
+    return parser.parse_args()
 
 
-def get_base_pdict():
-    return copy.deepcopy(BASE_PDICT)
+def resolve_input_csv(csv_arg: str) -> Path:
+    csv_path = Path(csv_arg)
+    return csv_path if csv_path.is_absolute() else DATA_DIR / csv_path
 
 
-def plot_truepredims(true_im, pred_im, true_im2, pred_im2, camera_im=None, pausetime=0.01):
-    if camera_im is None:
-        ncol = 2
-        offs = 0
-    else:
-        ncol = 3
-        offs = 1
-
-    plt.clf()
-    plt.subplot(2, ncol, 1)
-    plt.imshow(true_im)
-    plt.title('True pupil phase')
-    plt.colorbar()
-
-    plt.subplot(2, ncol, 2)
-    plt.imshow(pred_im)
-    plt.title('Predicted pupil phase')
-    plt.colorbar()
-
-    plt.subplot(2, ncol, 3 + offs)
-    plt.imshow(true_im2)
-    plt.title('True image')
-    plt.colorbar()
-
-    plt.subplot(2, ncol, 4 + offs)
-    plt.imshow(pred_im2)
-    plt.title('Predicted image')
-    plt.colorbar()
-
-    if camera_im is not None:
-        plt.subplot(2, ncol, 5 + offs)
-        plt.imshow(camera_im)
-        plt.title('Camera image')
-        plt.colorbar()
-
-    if pausetime is not None:
-        plt.pause(pausetime)
+def resolve_output_png(out_arg: str | None, csv_path: Path) -> Path:
+    if out_arg is None:
+        return DATA_DIR / f"{csv_path.stem}_corner_kde.png"
+    out_path = Path(out_arg)
+    return out_path if out_path.is_absolute() else DATA_DIR / out_path
 
 
-def load_prepared_data():
-    """
-    Loads, normalises, and splits the data once.
-    Cached so Bayesian optimisation does not re-read the NPZ files every trial.
-    """
-    global _DATA_CACHE
-    if _DATA_CACHE is not None:
-        return _DATA_CACHE
-
-    metadata = {}
-
-    # Load PL data
-    plsavefname = load_precombined_PLims_filename + '.npz'
-    print('Loading pl images from ' + plsavefname)
-    npf = np.load(datadir + plsavefname, allow_pickle=True)
-    all_plims = npf['all_plims']
-    if do_subset_on_read and use_subset is not None:
-        all_plims = all_plims[:use_subset, :, :]
-    all_slmims_filenames = npf['all_slmims_filenames']
-
-    # Load PSF data
-    if precombined_psf_filename is None:
-        psfsavefname = load_precombined_PLims_filename + '-PSFs' + '.npz'
-    else:
-        psfsavefname = precombined_psf_filename + '.npz'
-    print('Loading psf images from ' + psfsavefname)
-    npf = np.load(datadir + psfsavefname, allow_pickle=True)
-    all_psfims = npf['all_psfims']
-    if do_subset_on_read and use_subset is not None:
-        all_psfims = all_psfims[:use_subset, :, :]
-    datafilename = plsavefname
-
-    # Load WF data
-    wfsavefname = load_precombined_wfims_filename + '.npz'
-    print('Loading wf images from ' + wfsavefname)
-    npf = np.load(slmdatadir + wfsavefname, allow_pickle=True)
-    all_pupphase = npf['all_pupphase']
-    if do_subset_on_read and use_subset is not None:
-        all_pupphase = all_pupphase[:use_subset, :, :]
-    slmloc = npf['slmloc']
-
-    # Apply subset
-    if use_subset is not None and do_subset_on_read is False:
-        all_plims = all_plims[:use_subset, :, :]
-        all_pupphase = all_pupphase[:use_subset, :, :]
-        all_psfims = all_psfims[:use_subset, :, :]
-
-    # Normalise
-    normfacts = {}
-
-    mn = np.mean(all_plims[:stat_frms])
-    all_plims = all_plims - mn
-    sd = np.std(all_plims[:stat_frms])
-    all_plims = all_plims / sd
-    normfacts['PL'] = np.array([mn, 0, sd])
-
-    mn = np.mean(all_pupphase[:stat_frms])
-    all_pupphase = all_pupphase - mn
-    sd = np.std(all_pupphase[:stat_frms])
-    all_pupphase = all_pupphase / sd
-    normfacts['WF'] = np.array([mn, 0, sd])
-
-    psf_mn = np.percentile(all_psfims[:stat_frms], 0.1)
-    all_psfims = all_psfims - psf_mn
-    psf_mx = np.percentile(all_psfims[:stat_frms], 99.9)
-    all_psfims = all_psfims / psf_mx
-    normfacts['PSF'] = np.array([psf_mn, psf_mx])
-
-    Xdata = all_plims
-    ydata_wf = all_pupphase
-    ydata_psf = all_psfims
-
-    if addnoise_PL is not None:
-        Xdata = Xdata + np.random.normal(0, addnoise_PL, Xdata.shape)
-    if addnoise_PSF is not None:
-        ydata_psf = ydata_psf + np.random.normal(0, addnoise_PSF, ydata_psf.shape)
-    if addnoise_WF is not None:
-        ydata_wf = ydata_wf + np.random.normal(0, addnoise_WF, ydata_wf.shape)
-
-    # Split train/test exactly like your original code
-    ndata = Xdata.shape[0]
-    n_testdata = int(ndata * testdatasplit)
-    splitinds = [0, int(n_testdata)]
-
-    X_test = Xdata[splitinds[0]:splitinds[1], :]
-    y_test_wf = ydata_wf[splitinds[0]:splitinds[1], :]
-    y_test_psf = ydata_psf[splitinds[0]:splitinds[1], :]
-
-    traindata_X_1 = Xdata[:splitinds[0], :]
-    traindata_y_wf_1 = ydata_wf[:splitinds[0], :]
-    traindata_y_psf_1 = ydata_psf[:splitinds[0], :]
-
-    traindata_X_2 = Xdata[splitinds[1]:, :]
-    traindata_y_wf_2 = ydata_wf[splitinds[1]:, :]
-    traindata_y_psf_2 = ydata_psf[splitinds[1]:, :]
-
-    X_train = np.vstack((traindata_X_1, traindata_X_2))
-    y_train_wf = np.vstack((traindata_y_wf_1, traindata_y_wf_2))
-    y_train_psf = np.vstack((traindata_y_psf_1, traindata_y_psf_2))
-
-    _DATA_CACHE = {
-        "X_train": X_train,
-        "y_train_wf": y_train_wf,
-        "y_train_psf": y_train_psf,
-        "X_test": X_test,
-        "y_test_wf": y_test_wf,
-        "y_test_psf": y_test_psf,
-        "normfacts": normfacts,
-        "metadata": metadata,
-        "datafilename": datafilename,
-    }
-    return _DATA_CACHE
+def detect_variable_columns(df: pd.DataFrame, target: str) -> list[str]:
+    numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+    cols: list[str] = []
+    for col in numeric_cols:
+        if col in DEFAULT_EXCLUDE or col == target:
+            continue
+        if df[col].nunique(dropna=False) > 1:
+            cols.append(col)
+    return cols
 
 
-def build_model(pdict, Xndims, yndims_psf, yndims_wf):
-    input_img = Input(shape=(Xndims[0], Xndims[1], 1))
+def safe_log10(series: pd.Series) -> pd.Series:
+    if (series <= 0).any():
+        raise ValueError(f"Column '{series.name}' contains non-positive values, so log10 cannot be applied.")
+    return np.log10(series)
 
-    # Encoder
-    model_enc = Conv2D(pdict['nfilts_enc'], (pdict['ksz_enc'], pdict['ksz_enc']),
-                       activation=pdict['actFunc'], padding='same')(input_img)
-    model_enc = Dropout(pdict['dropout_rate'])(model_enc)
-    model_enc = MaxPooling2D((2, 2), padding='same')(model_enc)
 
-    model_enc = Conv2D(pdict['nfilts_enc'], (pdict['ksz_enc'], pdict['ksz_enc']),
-                       activation=pdict['actFunc'], padding='same')(model_enc)
-    model_enc = Dropout(pdict['dropout_rate'])(model_enc)
-    model_enc = MaxPooling2D((2, 2), padding='same')(model_enc)
+def prettify_label(col: str, logged: bool) -> str:
+    return f"log10({col})" if logged else col
 
-    model_enc = Conv2D(pdict['nfilts_enc'], (pdict['ksz_enc'], pdict['ksz_enc']),
-                       activation=pdict['actFunc'], padding='same')(model_enc)
-    model_enc = Dropout(pdict['dropout_rate'])(model_enc)
-    model_enc = MaxPooling2D((2, 2), padding='same')(model_enc)
 
-    model_enc = Conv2D(pdict['nfilts_enc'], (pdict['ksz_enc'], pdict['ksz_enc']),
-                       activation=pdict['actFunc'], padding='same')(model_enc)
-    model_enc = Dropout(pdict['dropout_rate'])(model_enc)
-    model_enc = MaxPooling2D((2, 2), padding='same')(model_enc)
+def is_integer_like(values: np.ndarray) -> bool:
+    vals = values[np.isfinite(values)]
+    if vals.size == 0:
+        return False
+    return np.allclose(vals, np.round(vals), atol=1e-10)
 
-    # Bottleneck
-    model_enc = Conv2D(pdict['nfilts_enc'], (pdict['ksz_enc'], pdict['ksz_enc']),
-                       activation=pdict['actFunc'], padding='same', name='Bottleneck')(model_enc)
 
-    # Dense after encoding
-    if pdict['n_units_dense'] > 0:
-        post_enc_shape = model_enc.shape[1:]
-        post_dense_shape = post_enc_shape
-        model_enc = Flatten()(model_enc)
-        model_enc = Dense(pdict['n_units_dense'], activation=pdict['actFunc'])(model_enc)
-        model_enc = Dropout(pdict['dropout_rate_dense'])(model_enc)
-        model_enc = Dense(pdict['n_units_dense'], activation=pdict['actFunc'])(model_enc)
-        model_enc = Dropout(pdict['dropout_rate_dense'])(model_enc)
-        model_enc = Dense(pdict['n_units_dense'], activation=pdict['actFunc'])(model_enc)
-        model_enc = Dense(int(np.prod(post_dense_shape)), activation=pdict['actFunc'])(model_enc)
-        model_enc = Reshape(post_dense_shape)(model_enc)
+def maybe_add_jitter(values: np.ndarray, jitter_frac: float, rng: np.random.Generator) -> np.ndarray:
+    vals = np.asarray(values, dtype=float).copy()
+    finite = vals[np.isfinite(vals)]
+    if finite.size < 2:
+        return vals
 
-    # PSF decoder
-    model_psf = Conv2D(pdict['nfilts_psf'], (pdict['ksz_psf'], pdict['ksz_psf']),
-                       activation=pdict['actFunc'], padding='same')(model_enc)
-    model_psf = Conv2D(pdict['nfilts_psf'], (pdict['ksz_psf'], pdict['ksz_psf']),
-                       activation=pdict['actFunc'], padding='same')(model_psf)
-    model_psf = Dropout(pdict['dropout_rate_psf'])(model_psf)
-    model_psf = UpSampling2D((2, 2), interpolation='bilinear')(model_psf)
+    uniq = np.unique(finite)
+    if is_integer_like(finite) or uniq.size <= max(10, int(0.35 * finite.size)):
+        spread = np.ptp(finite)
+        if spread == 0:
+            spread = max(abs(finite[0]), 1.0)
+        noise = rng.normal(loc=0.0, scale=jitter_frac * spread, size=vals.shape)
+        vals = vals + noise
+    return vals
 
-    model_psf = Conv2D(pdict['nfilts_psf'], (pdict['ksz_psf'], pdict['ksz_psf']),
-                       activation=pdict['actFunc'], padding='same')(model_psf)
-    model_psf = Conv2D(pdict['nfilts_psf'], (pdict['ksz_psf'], pdict['ksz_psf']),
-                       activation=pdict['actFunc'], padding='same')(model_psf)
-    model_psf = Dropout(pdict['dropout_rate_psf'])(model_psf)
-    model_psf = UpSampling2D((2, 2), interpolation='bilinear')(model_psf)
 
-    model_psf = Conv2D(pdict['nfilts_psf'], (pdict['ksz_psf'], pdict['ksz_psf']),
-                       activation=pdict['actFunc'], padding='same')(model_psf)
-    model_psf = Conv2D(pdict['nfilts_psf'], (pdict['ksz_psf'], pdict['ksz_psf']),
-                       activation=pdict['actFunc'], padding='same')(model_psf)
-    model_psf = Dropout(pdict['dropout_rate_psf'])(model_psf)
-    model_psf = UpSampling2D((2, 2), interpolation='bilinear')(model_psf)
+def kde_1d_line(ax: plt.Axes, x: np.ndarray) -> None:
+    x = np.asarray(x, dtype=float)
+    x = x[np.isfinite(x)]
+    if x.size < 5 or np.unique(x).size < 3:
+        return
+    xmin, xmax = np.min(x), np.max(x)
+    pad = 0.08 * (xmax - xmin if xmax > xmin else 1.0)
+    grid = np.linspace(xmin - pad, xmax + pad, 250)
+    kde = gaussian_kde(x)
+    dens = kde(grid)
+    ax2 = ax.twinx()
+    ax2.plot(grid, dens, linewidth=1.2)
+    ax2.set_yticks([])
+    ax2.set_ylabel("")
 
-    model_psf = Conv2D(pdict['nfilts_psf'], (pdict['ksz_psf'], pdict['ksz_psf']),
-                       activation=pdict['actFunc'], padding='same')(model_psf)
-    model_psf = Dropout(pdict['dropout_rate_psf'])(model_psf)
-    model_psf = Conv2D(pdict['nfilts_psf'], (pdict['ksz_psf'], pdict['ksz_psf']),
-                       activation=pdict['actFunc'], padding='same')(model_psf)
-    model_psf = Resizing(yndims_psf[0], yndims_psf[1], interpolation='bilinear')(model_psf)
-    model_psf = Conv2D(pdict['nfilts_psf'], (pdict['ksz_psf'], pdict['ksz_psf']),
-                       activation=pdict['actFunc'], padding='same')(model_psf)
-    model_psf = Conv2D(1, (pdict['ksz_psf'], pdict['ksz_psf']),
-                       activation='linear', padding='same', name='outlayer_psf')(model_psf)
 
-    # WF decoder
-    model_wf = Conv2D(pdict['nfilts_wf'], (pdict['ksz_wf'], pdict['ksz_wf']),
-                      activation=pdict['actFunc'], padding='same')(model_enc)
-    model_wf = Dropout(pdict['dropout_rate'])(model_wf)
-    model_wf = UpSampling2D((2, 2), interpolation='bilinear')(model_wf)
+def kde_2d_contours(ax: plt.Axes, x: np.ndarray, y: np.ndarray, levels: int) -> None:
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+    good = np.isfinite(x) & np.isfinite(y)
+    x = x[good]
+    y = y[good]
+    if x.size < 8:
+        return
+    if np.unique(x).size < 4 or np.unique(y).size < 4:
+        return
 
-    model_wf = Conv2D(pdict['nfilts_wf'], (pdict['ksz_wf'], pdict['ksz_wf']),
-                      activation=pdict['actFunc'], padding='same')(model_wf)
-    model_wf = UpSampling2D((2, 2), interpolation='bilinear')(model_wf)
+    xmin, xmax = np.min(x), np.max(x)
+    ymin, ymax = np.min(y), np.max(y)
+    xpad = 0.08 * (xmax - xmin if xmax > xmin else 1.0)
+    ypad = 0.08 * (ymax - ymin if ymax > ymin else 1.0)
 
-    model_wf = Conv2D(pdict['nfilts_wf'], (pdict['ksz_wf'], pdict['ksz_wf']),
-                      activation=pdict['actFunc'], padding='same')(model_wf)
-    model_wf = Dropout(pdict['dropout_rate'])(model_wf)
-    model_wf = UpSampling2D((2, 2), interpolation='bilinear')(model_wf)
+    xx, yy = np.meshgrid(
+        np.linspace(xmin - xpad, xmax + xpad, 140),
+        np.linspace(ymin - ypad, ymax + ypad, 140),
+    )
+    xy = np.vstack([x, y])
+    kde = gaussian_kde(xy)
+    zz = kde(np.vstack([xx.ravel(), yy.ravel()])).reshape(xx.shape)
 
-    model_wf = Conv2D(pdict['nfilts_wf'], (pdict['ksz_wf'], pdict['ksz_wf']),
-                      activation=pdict['actFunc'], padding='same')(model_wf)
-    model_wf = Dropout(pdict['dropout_rate'])(model_wf)
-    model_wf = Conv2D(1, (pdict['ksz_wf'], pdict['ksz_wf']),
-                      activation='linear', padding='same', name='outlayer_wf')(model_wf)
+    zmin = np.min(zz)
+    zmax = np.max(zz)
+    if not np.isfinite(zmin) or not np.isfinite(zmax) or zmax <= zmin:
+        return
 
-    model = Model(inputs=input_img, outputs=[model_psf, model_wf])
+    contour_levels = np.linspace(zmin + 0.18 * (zmax - zmin), zmax, levels)
+    ax.contourf(xx, yy, zz, levels=contour_levels, alpha=0.45)
+    ax.contour(xx, yy, zz, levels=contour_levels, linewidths=0.8)
 
-    callbacks = []
-    reduce_lr = ReduceLROnPlateau(
-        monitor='val_loss',
-        factor=pdict['reduceLR_factor'],
-        patience=pdict['reduceLR_patience'],
-        min_lr=pdict['reduceLR_min_lr'],
-        cooldown=pdict['reduceLR_cooldown']
+
+
+def try_corner_package(data: np.ndarray, labels: list[str], out_path: Path) -> bool:
+    try:
+        import corner  # type: ignore
+    except Exception:
+        return False
+
+    fig = corner.corner(
+        data,
+        labels=labels,
+        show_titles=False,
+        plot_contours=True,
+        fill_contours=True,
+        bins=18,
+    )
+    fig.savefig(out_path, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+    return True
+
+
+
+def make_corner_plot(
+    df: pd.DataFrame,
+    cols: list[str],
+    target: str,
+    log_cols: Iterable[str],
+    out_path: Path,
+    bins: int,
+    figscale: float,
+    top_n: int,
+    levels: int,
+    jitter_frac: float,
+    seed: int,
+    use_kde: bool,
+) -> None:
+    if not cols:
+        raise ValueError("No columns available to plot.")
+    if target not in df.columns:
+        raise ValueError(f"Target column '{target}' was not found in the CSV.")
+
+    plot_df = df.copy()
+    logged_flags: dict[str, bool] = {}
+    log_cols = set(log_cols)
+
+    for col in cols:
+        if col not in plot_df.columns:
+            raise ValueError(f"Requested column '{col}' was not found in the CSV.")
+        if col in log_cols:
+            plot_df[col] = safe_log10(plot_df[col])
+            logged_flags[col] = True
+        else:
+            logged_flags[col] = False
+
+    needed = list(dict.fromkeys(cols + [target]))
+    plot_df = plot_df[needed].replace([np.inf, -np.inf], np.nan).dropna().reset_index(drop=True)
+    if plot_df.empty:
+        raise ValueError("No finite rows remain after filtering NaN/inf values.")
+
+    labels = [prettify_label(col, logged_flags[col]) for col in cols]
+    data_matrix = plot_df[cols].to_numpy(dtype=float)
+
+    # If the external corner package is available, use it.
+    # It produces the most familiar 'corner plot' look.
+    if use_kde and try_corner_package(data_matrix, labels, out_path):
+        return
+
+    rng = np.random.default_rng(seed)
+    n = len(cols)
+    fig, axes = plt.subplots(n, n, figsize=(figscale * n, figscale * n), squeeze=False)
+
+    cvals = plot_df[target].to_numpy(dtype=float)
+    best_idx = np.argsort(cvals)[: max(top_n, 0)] if top_n > 0 else np.array([], dtype=int)
+
+    # Precompute jittered columns only for KDE use
+    jittered: dict[str, np.ndarray] = {}
+    for col in cols:
+        jittered[col] = maybe_add_jitter(plot_df[col].to_numpy(dtype=float), jitter_frac, rng)
+
+    for i, ycol in enumerate(cols):
+        for j, xcol in enumerate(cols):
+            ax = axes[i, j]
+
+            if i < j:
+                ax.axis("off")
+                continue
+
+            x = plot_df[xcol].to_numpy(dtype=float)
+
+            if i == j:
+                ax.hist(x, bins=bins, density=True, alpha=0.8)
+                kde_1d_line(ax, jittered[xcol])
+                ax.set_ylabel("density")
+            else:
+                y = plot_df[ycol].to_numpy(dtype=float)
+                if use_kde:
+                    kde_2d_contours(ax, jittered[xcol], jittered[ycol], levels=levels)
+                ax.scatter(x, y, s=14, alpha=0.75)
+                if best_idx.size:
+                    ax.scatter(
+                        x[best_idx],
+                        y[best_idx],
+                        marker="x",
+                        s=70,
+                        linewidths=1.4,
+                    )
+
+            if i == n - 1:
+                ax.set_xlabel(prettify_label(xcol, logged_flags[xcol]))
+            else:
+                ax.set_xticklabels([])
+
+            if j == 0 and i != 0:
+                ax.set_ylabel(prettify_label(ycol, logged_flags[ycol]))
+            elif i != j:
+                ax.set_yticklabels([])
+
+    fig.suptitle("Corner plot of varying optimisation variables", y=0.995)
+    fig.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+
+
+
+def main() -> None:
+    args = parse_args()
+
+    csv_path = resolve_input_csv(args.csv)
+    out_path = resolve_output_png(args.out, csv_path)
+
+    if not csv_path.exists():
+        raise FileNotFoundError(
+            f"CSV file not found: {csv_path}\n"
+            f"Put the file in {DATA_DIR} or pass a full path with --csv"
+        )
+
+    df = pd.read_csv(csv_path)
+    cols = detect_variable_columns(df, args.target) if args.cols is None else args.cols
+
+    print(f"Loaded CSV: {csv_path}")
+    print(f"Rows, columns: {df.shape}")
+    print(f"Using columns: {cols}")
+    print(f"Target column: {args.target}")
+    print(f"Saving PNG to: {out_path}")
+
+    make_corner_plot(
+        df=df,
+        cols=cols,
+        target=args.target,
+        log_cols=args.log_cols,
+        out_path=out_path,
+        bins=args.bins,
+        figscale=args.figscale,
+        top_n=args.top_n,
+        levels=args.levels,
+        jitter_frac=args.jitter_frac,
+        seed=args.seed,
+        use_kde=not args.no_kde,
     )
 
-    if pdict['enable_lr_sched']:
-        callbacks.append(reduce_lr)
-        pdict['learningRate'] = pdict['reduceLR_start']
-
-    model.compile(
-        optimizer=keras.optimizers.Adam(learning_rate=pdict['learningRate']),
-        loss=[pdict['lossFunc_psf'], pdict['lossFunc_wf']],
-        loss_weights=[pdict['loss_weight'], 1.0]
-    )
-
-    return model, callbacks
-
-
-def train_one_run(
-    pdict_override= None, # for optimiser run params, for regular = none
-    do_predictions=False,
-    do_plotting=False,
-    save_model=False,
-    save_preds=False,
-    save_movie=False,
-    verbose=0,
-):
-    pdict = get_base_pdict()
-    if pdict_override is not None:
-        pdict.update(pdict_override)
-
-    # Make sure integer-type params stay integers
-    pdict['batchSize'] = int(pdict['batchSize'])
-    pdict['ksz_enc'] = int(pdict['ksz_enc'])
-    pdict['ksz_psf'] = int(pdict['ksz_psf'])
-    pdict['ksz_wf'] = int(pdict['ksz_wf'])
-    pdict['nfilts_enc'] = int(pdict['nfilts_enc'])
-    pdict['nfilts_psf'] = int(pdict['nfilts_psf'])
-    pdict['nfilts_wf'] = int(pdict['nfilts_wf'])
-    pdict['n_units_dense'] = int(pdict['n_units_dense'])
-
-    tf.keras.backend.clear_session()
-    tf.random.set_seed(42)
-    np.random.seed(42)
-
-    data = load_prepared_data()
-    X_train = data["X_train"]
-    y_train_wf = data["y_train_wf"]
-    y_train_psf = data["y_train_psf"]
-    X_test = data["X_test"]
-    y_test_wf = data["y_test_wf"]
-    y_test_psf = data["y_test_psf"]
-
-    Xndims = X_train.shape[1:]
-    yndims_psf = y_train_psf.shape[1:]
-    yndims_wf = y_train_wf.shape[1:]
-
-    model, callbacks = build_model(pdict, Xndims, yndims_psf, yndims_wf)
-
-    t = time.time()
-    history = model.fit(
-        X_train,
-        [y_train_psf, y_train_wf],
-        validation_data=(X_test, [y_test_psf, y_test_wf]),
-        epochs=pdict['epochs'],
-        batch_size=pdict['batchSize'],
-        callbacks=callbacks,
-        verbose=verbose
-    )
-    print('Total time: %.2f seconds' % (time.time() - t))
-
-    history_loss = history.history['loss']
-    history_val_loss = history.history['val_loss']
-
-    # This is the scalar the Bayesian optimiser should minimise
-    objective_val_loss = float(np.min(history_val_loss))
-    final_val_loss = float(history_val_loss[-1])
-
-    predictions_psf = None
-    predictions_wf = None
-
-    if do_predictions or do_plotting or save_preds:
-        predictions = model.predict(X_test[:num_preds, :, :], verbose=0)
-        predictions_psf = predictions[0]
-        predictions_wf = predictions[1]
-
-    if do_plotting:
-        timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M")
-
-        loss_path = datadir + save_filename_pref + timestamp + "_loss-curve.png"
-        movie_path = datadir + save_filename_pref + timestamp + "_preds-movie.mp4"
-
-        lossfig = plt.figure(1)
-        plt.clf()
-        plt.plot(history_loss)
-        plt.plot(history_val_loss)
-        plt.title('Model loss - val=%.3g' % history_val_loss[-1])
-        plt.ylabel('Loss')
-        plt.xlabel('Epoch')
-        plt.legend(['Train', 'Test'], loc='upper left')
-        lossfig.savefig(loss_path, dpi=300, bbox_inches="tight")
-        print("Saved loss curve to:", loss_path)
-        plt.show()
-
-        num_testims = 10
-        wf_true = y_test_wf[:num_testims, :, :]
-        wf_pred = predictions_wf[:num_testims, :, :]
-        psf_true = y_test_psf[:num_testims, :, :]
-        psf_pred = predictions_psf[:num_testims, :, :]
-        cur_psf_true_og = None
-
-        fig = plt.figure(2, figsize=(9, 8))
-
-        if save_movie:
-            Writer = animation.writers['ffmpeg']
-            writer = Writer(fps=10, metadata=dict(artist='pl'), bitrate=1800)
-            writer.setup(fig, movie_path, dpi=100)
-            print("Saving movie to:", movie_path)
-
-        for k in np.arange(0, num_testims, 1):
-            plot_truepredims(
-                wf_true[k, :, :], wf_pred[k, :, :],
-                psf_true[k, :, :], psf_pred[k, :, :],
-                camera_im=cur_psf_true_og, pausetime=1
-            )
-            if save_movie:
-                writer.grab_frame()
-
-        if save_movie:
-            writer.finish()
-            print("Saved movie to:", movie_path)
-
-    return {
-        "objective_val_loss": objective_val_loss,
-        "final_val_loss": final_val_loss,
-        "history_val_loss": history_val_loss,
-        "history_loss": history_loss,
-        "pdict": copy.deepcopy(pdict),
-        "model": model,
-    }
+    print("Done.")
 
 
 if __name__ == "__main__":
-    result = train_one_run(
-        pdict_override=None,
-        do_predictions=True,
-        do_plotting=True,
-        save_model=True,
-        save_preds=True,
-        save_movie=True,
-        verbose=1,
-    )
-    print("Best val_loss seen in run:", result["objective_val_loss"])
-    print("Final val_loss:", result["final_val_loss"])
+    main()
