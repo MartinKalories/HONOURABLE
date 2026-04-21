@@ -10,7 +10,7 @@ import gc
 import tensorflow as tf
 
 from skopt import gp_minimize
-from skopt.space import Real, Integer
+from skopt.space import Real, Integer, Categorical
 from skopt.utils import use_named_args
 from skopt.callbacks import VerboseCallback
 
