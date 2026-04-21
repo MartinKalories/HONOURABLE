@@ -25,12 +25,21 @@ os.makedirs(save_dir, exist_ok=True)
 # Search space
 # ------------------------------------------------------------
 space = [
-    Real(1e-5, 1e-4, prior='log-uniform', name='learningRate'),
-    Real(0.02, 0.15, name='dropout_rate'),
-    Real(0.0, 0.32, name='dropout_rate_dense'),
+    Real(1e-5, 5e-3, prior='log-uniform', name='learningRate'),
+    Real(0.0, 0.4, name='dropout_rate'),
+    Real(0.0, 0.6, name='dropout_rate_dense'),
     Real(0.0, 0.8, name='dropout_rate_psf'),
+    Integer(512, 4096, name='n_units_dense'),
+    Categorical([16, 32, 64], name='batchSize'),
+    Categorical([3, 5, 7], name='ksz_enc'),
+    Categorical([3, 5], name='ksz_psf'),
+    Categorical([3, 5], name='ksz_wf'),
+    Categorical([64, 96, 128], name='nfilts_enc'),
+    Categorical([32, 64, 96], name='nfilts_psf'),
+    Categorical([32, 64, 96], name='nfilts_wf'),
+    Real(0.5, 3.0, name='loss_weight'),
+    Categorical(['relu', 'elu', 'gelu'], name='actFunc'),
 ]
-
 trial_log = []
 
 # Live plotting state
@@ -257,7 +266,7 @@ def main():
             func=objective,
             dimensions=space,
             n_calls=50,
-            n_initial_points=15,
+            n_initial_points=2,
             acq_func='EI',
             random_state=42,
             callback=[VerboseCallback(n_total=40)]
