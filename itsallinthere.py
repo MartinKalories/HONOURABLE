@@ -196,6 +196,7 @@ def update_live_plot():
 
 @use_named_args(space)
 def objective(**params):
+    result = None
     try:
         result = train_one_run(
             pdict_override=params,
@@ -256,6 +257,13 @@ def objective(**params):
         print("Error:", repr(e))
         print("-" * 60)
         return 1e6
+
+    finally:
+        if result is not None:
+            del result
+        tf.keras.backend.clear_session()
+        gc.collect()
+
 
 
 def main():
