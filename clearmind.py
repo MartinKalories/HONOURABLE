@@ -276,7 +276,7 @@ def main():
             func=objective,
             dimensions=space,
             n_calls=50,
-            n_initial_points=8,
+            n_initial_points=2,
             acq_func='EI',
             random_state=42,
             callback=[VerboseCallback(n_total=40)]
