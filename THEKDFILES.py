@@ -62,6 +62,26 @@ T = 0.05
 weights = np.exp(-(loss - loss.min()) / T)
 weights /= weights.sum()
 
+def kde_1d(x, w, grids=400, bw_method=None):
+    x = np.asarray(x, dtype=float)
+    w = np.asarray(w, dtype=float)
+
+    if np.std(x) < 1e-12:
+        return None, None
+
+    try:
+        kde = gaussian_kde(x[np.newaxis, :], weights=w, bw_method=bw_method)
+
+        grid = np.linspace(x.min(), x.max(), grids)
+        pdf = kde(grid[np.newaxis, :])
+
+        pdf /= np.trapz(pdf, grid)
+
+        return grid, pdf
+
+    except np.linalg.LinAlgError:
+        return None, None
+
 
 # --------------------------------------------------
 # 2D KDE function
@@ -143,6 +163,58 @@ def plot_kde_pairs(samples, weights, labels, csv_path, grids=200, levels=30):
 
     print("KDE plots saved to:", output_dir)
 
+def plot_kde_1d(samples, weights, labels, csv_path, grids=400):
+    output_dir = csv_path.parent / f"KDE_{csv_path.stem}_plots"
+    output_dir.mkdir(exist_ok=True)
+
+    results = []
+
+    for k in range(samples.shape[1]):
+        x = samples[:, k]
+
+        grid, pdf = kde_1d(x, weights, grids=grids)
+
+        if grid is None:
+            print(f"Skipping 1D KDE for {labels[k]}: not enough variation.")
+            continue
+
+        max_idx = np.argmax(pdf)
+        kde_peak = grid[max_idx]
+        peak_density = pdf[max_idx]
+
+        plt.figure(figsize=(6, 4))
+        plt.plot(grid, pdf)
+        plt.scatter(kde_peak, peak_density, s=80, color="black", zorder=10)
+
+        plt.xlabel(labels[k])
+        plt.ylabel("Marginal PDF (KDE)")
+        plt.title(f"1D KDE: {labels[k]}")
+        plt.tight_layout()
+
+        filename = (
+            f"1D_{labels[k]}.png"
+            .replace("(", "")
+            .replace(")", "")
+            .replace("/", "")
+        )
+
+        save_path = output_dir / filename
+        plt.savefig(save_path, dpi=300)
+        plt.close()
+
+        results.append({
+            "param": labels[k],
+            "kde_1d_peak": kde_peak,
+            "peak_density": peak_density,
+        })
+
+    results_df = pd.DataFrame(results)
+    output_path = csv_path.parent / f"KDE_1D_{csv_path.name}"
+    results_df.to_csv(output_path, index=False)
+
+    print("1D KDE plots saved to:", output_dir)
+    print("1D KDE results saved to:", output_path)
+
 
 # --------------------------------------------------
 # Save KDE peak numerical results
@@ -174,5 +246,7 @@ def save_kde_results(samples, weights, labels, csv_path, grids=200):
 # --------------------------------------------------
 # Run everything
 # --------------------------------------------------
+plot_kde_1d(samples, weights, labels, csv_path)
 plot_kde_pairs(samples, weights, labels, csv_path)
 save_kde_results(samples, weights, labels, csv_path)
+
