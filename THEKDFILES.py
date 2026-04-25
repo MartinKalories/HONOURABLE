@@ -4,7 +4,9 @@ from itertools import combinations
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+
 from scipy.stats import gaussian_kde
+from scipy.integrate import trapezoid
 
 
 # --------------------------------------------------
@@ -62,6 +64,10 @@ T = 0.05
 weights = np.exp(-(loss - loss.min()) / T)
 weights /= weights.sum()
 
+
+# --------------------------------------------------
+# 1D KDE function
+# --------------------------------------------------
 def kde_1d(x, w, grids=400, bw_method=None):
     x = np.asarray(x, dtype=float)
     w = np.asarray(w, dtype=float)
@@ -70,12 +76,18 @@ def kde_1d(x, w, grids=400, bw_method=None):
         return None, None
 
     try:
-        kde = gaussian_kde(x[np.newaxis, :], weights=w, bw_method=bw_method)
+        kde = gaussian_kde(
+            x[np.newaxis, :],
+            weights=w,
+            bw_method=bw_method,
+        )
 
         grid = np.linspace(x.min(), x.max(), grids)
         pdf = kde(grid[np.newaxis, :])
 
-        pdf /= np.trapz(pdf, grid)
+        area = trapezoid(pdf, grid)
+        if area > 0:
+            pdf /= area
 
         return grid, pdf
 
@@ -87,33 +99,126 @@ def kde_1d(x, w, grids=400, bw_method=None):
 # 2D KDE function
 # --------------------------------------------------
 def kde_2d(x, y, w, grids=200, bw_method=None):
-    data = np.vstack([x, y])
-    kde = gaussian_kde(data, weights=w, bw_method=bw_method)
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+    w = np.asarray(w, dtype=float)
 
     xg = np.linspace(x.min(), x.max(), grids)
     yg = np.linspace(y.min(), y.max(), grids)
 
     X, Y = np.meshgrid(xg, yg)
-    XY = np.vstack([X.ravel(), Y.ravel()])
 
-    Z = kde(XY).reshape(X.shape)
+    if np.std(x) < 1e-12 or np.std(y) < 1e-12:
+        return X, Y, None
 
-    return X, Y, Z
+    try:
+        data = np.vstack([x, y])
+        kde = gaussian_kde(
+            data,
+            weights=w,
+            bw_method=bw_method,
+        )
+
+        XY = np.vstack([X.ravel(), Y.ravel()])
+        Z = kde(XY).reshape(X.shape)
+
+        return X, Y, Z
+
+    except np.linalg.LinAlgError:
+        return X, Y, None
 
 
 # --------------------------------------------------
-# Plot and save KDE graphs
+# Plot and save 1D KDE graphs
+# --------------------------------------------------
+def plot_kde_1d(samples, weights, labels, csv_path, grids=400):
+    output_dir = csv_path.parent / f"KDE_{csv_path.stem}_plots"
+    output_dir.mkdir(exist_ok=True)
+
+    results = []
+
+    for k in range(samples.shape[1]):
+        x = samples[:, k]
+
+        grid, pdf = kde_1d(x, weights, grids=grids)
+
+        if grid is None:
+            print(f"Skipping 1D KDE for {labels[k]}: not enough variation.")
+            continue
+
+        max_idx = np.argmax(pdf)
+        kde_peak = grid[max_idx]
+        peak_density = pdf[max_idx]
+
+        plt.figure(figsize=(6, 4))
+        plt.plot(grid, pdf)
+        plt.scatter(
+            kde_peak,
+            peak_density,
+            s=80,
+            color="black",
+            zorder=10,
+        )
+
+        plt.xlabel(labels[k])
+        plt.ylabel("Marginal PDF (KDE)")
+        plt.title(f"1D KDE: {labels[k]}")
+        plt.tight_layout()
+
+        filename = (
+            f"1D_{labels[k]}.png"
+            .replace("(", "")
+            .replace(")", "")
+            .replace("/", "")
+        )
+
+        save_path = output_dir / filename
+        plt.savefig(save_path, dpi=300)
+        plt.close()
+
+        results.append({
+            "param": labels[k],
+            "kde_1d_peak": kde_peak,
+            "peak_density": peak_density,
+        })
+
+    results_df = pd.DataFrame(results)
+    output_path = csv_path.parent / f"KDE_1D_{csv_path.name}"
+    results_df.to_csv(output_path, index=False)
+
+    print("1D KDE plots saved to:", output_dir)
+    print("1D KDE results saved to:", output_path)
+
+
+# --------------------------------------------------
+# Plot and save 2D KDE graphs
 # --------------------------------------------------
 def plot_kde_pairs(samples, weights, labels, csv_path, grids=200, levels=30):
     output_dir = csv_path.parent / f"KDE_{csv_path.stem}_plots"
     output_dir.mkdir(exist_ok=True)
 
     for i, j in combinations(range(samples.shape[1]), 2):
-        X, Y, Z = kde_2d(samples[:, i], samples[:, j], weights, grids=grids)
+        X, Y, Z = kde_2d(
+            samples[:, i],
+            samples[:, j],
+            weights,
+            grids=grids,
+        )
+
+        if Z is None:
+            print(f"Skipping 2D KDE for {labels[i]} vs {labels[j]}: not enough variation.")
+            continue
 
         plt.figure(figsize=(6, 5))
 
-        cf = plt.contourf(X, Y, Z, levels=levels, cmap="viridis")
+        cf = plt.contourf(
+            X,
+            Y,
+            Z,
+            levels=levels,
+            cmap="viridis",
+        )
+
         plt.contour(
             X,
             Y,
@@ -124,9 +229,13 @@ def plot_kde_pairs(samples, weights, labels, csv_path, grids=200, levels=30):
             linewidths=0.5,
         )
 
-        plt.scatter(samples[:, i], samples[:, j], s=25, alpha=0.45)
+        plt.scatter(
+            samples[:, i],
+            samples[:, j],
+            s=25,
+            alpha=0.45,
+        )
 
-        # KDE peak
         max_idx = np.unravel_index(np.argmax(Z), Z.shape)
         kde_peak_x = X[max_idx]
         kde_peak_y = Y[max_idx]
@@ -161,69 +270,33 @@ def plot_kde_pairs(samples, weights, labels, csv_path, grids=200, levels=30):
         plt.savefig(save_path, dpi=300)
         plt.close()
 
-    print("KDE plots saved to:", output_dir)
-
-def plot_kde_1d(samples, weights, labels, csv_path, grids=400):
-    output_dir = csv_path.parent / f"KDE_{csv_path.stem}_plots"
-    output_dir.mkdir(exist_ok=True)
-
-    results = []
-
-    for k in range(samples.shape[1]):
-        x = samples[:, k]
-
-        grid, pdf = kde_1d(x, weights, grids=grids)
-
-        if grid is None:
-            print(f"Skipping 1D KDE for {labels[k]}: not enough variation.")
-            continue
-
-        max_idx = np.argmax(pdf)
-        kde_peak = grid[max_idx]
-        peak_density = pdf[max_idx]
-
-        plt.figure(figsize=(6, 4))
-        plt.plot(grid, pdf)
-        plt.scatter(kde_peak, peak_density, s=80, color="black", zorder=10)
-
-        plt.xlabel(labels[k])
-        plt.ylabel("Marginal PDF (KDE)")
-        plt.title(f"1D KDE: {labels[k]}")
-        plt.tight_layout()
-
-        filename = (
-            f"1D_{labels[k]}.png"
-            .replace("(", "")
-            .replace(")", "")
-            .replace("/", "")
-        )
-
-        save_path = output_dir / filename
-        plt.savefig(save_path, dpi=300)
-        plt.close()
-
-        results.append({
-            "param": labels[k],
-            "kde_1d_peak": kde_peak,
-            "peak_density": peak_density,
-        })
-
-    results_df = pd.DataFrame(results)
-    output_path = csv_path.parent / f"KDE_1D_{csv_path.name}"
-    results_df.to_csv(output_path, index=False)
-
-    print("1D KDE plots saved to:", output_dir)
-    print("1D KDE results saved to:", output_path)
+    print("2D KDE plots saved to:", output_dir)
 
 
 # --------------------------------------------------
-# Save KDE peak numerical results
+# Save 2D KDE peak numerical results
 # --------------------------------------------------
 def save_kde_results(samples, weights, labels, csv_path, grids=200):
     results = []
 
     for i, j in combinations(range(samples.shape[1]), 2):
-        X, Y, Z = kde_2d(samples[:, i], samples[:, j], weights, grids=grids)
+        X, Y, Z = kde_2d(
+            samples[:, i],
+            samples[:, j],
+            weights,
+            grids=grids,
+        )
+
+        if Z is None:
+            results.append({
+                "param_x": labels[i],
+                "param_y": labels[j],
+                "kde_peak_x": np.nan,
+                "kde_peak_y": np.nan,
+                "peak_density": np.nan,
+                "status": "skipped_not_enough_variation",
+            })
+            continue
 
         max_idx = np.unravel_index(np.argmax(Z), Z.shape)
 
@@ -233,6 +306,7 @@ def save_kde_results(samples, weights, labels, csv_path, grids=200):
             "kde_peak_x": X[max_idx],
             "kde_peak_y": Y[max_idx],
             "peak_density": Z[max_idx],
+            "status": "ok",
         })
 
     results_df = pd.DataFrame(results)
@@ -240,7 +314,7 @@ def save_kde_results(samples, weights, labels, csv_path, grids=200):
     output_path = csv_path.parent / f"KDE_{csv_path.name}"
     results_df.to_csv(output_path, index=False)
 
-    print("KDE results saved to:", output_path)
+    print("2D KDE results saved to:", output_path)
 
 
 # --------------------------------------------------
@@ -249,4 +323,3 @@ def save_kde_results(samples, weights, labels, csv_path, grids=200):
 plot_kde_1d(samples, weights, labels, csv_path)
 plot_kde_pairs(samples, weights, labels, csv_path)
 save_kde_results(samples, weights, labels, csv_path)
-
