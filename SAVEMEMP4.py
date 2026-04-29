@@ -16,10 +16,17 @@ from thirdopt import train_one_run, get_base_pdict, datadir
 
 
 # ------------------------------------------------------------
-# Save directory
+# Run ID (CHANGE THIS ONLY WHEN YOU WANT A NEW EXPERIMENT)
 # ------------------------------------------------------------
+RUN_ID = "bayesopt_current"
+
 save_dir = datadir
 os.makedirs(save_dir, exist_ok=True)
+
+checkpoint_npz = os.path.join(save_dir, f"{RUN_ID}_checkpoint.npz")
+optimizer_checkpoint = os.path.join(save_dir, f"{RUN_ID}_optimizer.pkl")
+
+all_trials_filename = os.path.join(save_dir, f"{RUN_ID}_all_trials.csv")
 
 
 # ------------------------------------------------------------
@@ -43,20 +50,6 @@ space = [
 ]
 
 space_param_keys = [dim.name for dim in space]
-
-
-# ------------------------------------------------------------
-# Run naming
-# ------------------------------------------------------------
-run_date = datetime.datetime.now().strftime("%Y%m%d")
-run_time = datetime.datetime.now().strftime("%H%M")
-timestamp = f"{run_date}-{run_time}"
-run_prefix = f"bayesopt_{timestamp}"
-
-all_trials_filename = os.path.join(save_dir, "all_trial_results.csv")
-
-checkpoint_npz = os.path.join(save_dir, "bayesopt_checkpoint.npz")
-optimizer_checkpoint = os.path.join(save_dir, "bayesopt_optimizer_checkpoint.pkl")
 
 
 # ------------------------------------------------------------
@@ -90,160 +83,14 @@ def make_json_safe(obj):
         return obj
 
 
-def save_trial_log_csv(trial_log, filename):
-    if not trial_log:
-        return
-
-    fieldnames = [
-        "trial",
-        "objective_val_loss",
-        "final_val_loss",
-    ] + space_param_keys
-
-    with open(filename, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-
-        for row in trial_log:
-            out_row = {
-                "trial": row["trial"],
-                "objective_val_loss": row["objective_val_loss"],
-                "final_val_loss": row["final_val_loss"],
-            }
-
-            for k in space_param_keys:
-                out_row[k] = row["params"].get(k, None)
-
-            writer.writerow(out_row)
-
-
-def append_trial_to_master_csv(trial_entry, filename, run_prefix, run_date, run_time):
-    fieldnames = [
-        "run_prefix",
-        "run_date",
-        "run_time",
-        "trial",
-        "objective_val_loss",
-        "final_val_loss",
-    ] + space_param_keys
-
-    file_exists = os.path.isfile(filename)
-
-    if file_exists:
-        with open(filename, "r", newline="") as f:
-            reader = csv.reader(f)
-            existing_header = next(reader, None)
-
-        if existing_header != fieldnames:
-            backup_name = filename.replace(
-                ".csv",
-                f"_backup_{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}.csv",
-            )
-            os.rename(filename, backup_name)
-            print(f"Old master CSV header did not match. Backed up to: {backup_name}")
-            file_exists = False
-
-    with open(filename, "a", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-
-        if not file_exists:
-            writer.writeheader()
-
-        out_row = {
-            "run_prefix": run_prefix,
-            "run_date": run_date,
-            "run_time": run_time,
-            "trial": trial_entry["trial"],
-            "objective_val_loss": trial_entry["objective_val_loss"],
-            "final_val_loss": trial_entry["final_val_loss"],
-        }
-
-        for k in space_param_keys:
-            out_row[k] = trial_entry["params"].get(k, None)
-
-        writer.writerow(out_row)
-
-
-def save_best_results(best_pdict, best_loss, trial_log, prefix):
-    with open(os.path.join(save_dir, f"{prefix}_best_results.json"), "w") as f:
-        json.dump(
-            make_json_safe(
-                {
-                    "best_objective_val_loss": float(best_loss),
-                    "best_params": best_pdict,
-                    "n_trials_completed": len(trial_log),
-                    "run_date": run_date,
-                    "run_time": run_time,
-                }
-            ),
-            f,
-            indent=2,
-        )
-
-    np.savez(
-        os.path.join(save_dir, f"{prefix}_best_results.npz"),
-        best_objective_val_loss=float(best_loss),
-        best_params=np.array([best_pdict], dtype=object),
-        all_trials=np.array(trial_log, dtype=object),
-        run_date=run_date,
-        run_time=run_time,
-    )
-
-    save_trial_log_csv(
-        trial_log,
-        os.path.join(save_dir, f"{prefix}_all_trials.csv"),
-    )
-
-
-def save_optimizer_final(opt, prefix):
-    dump(
-        opt,
-        os.path.join(save_dir, f"{prefix}_optimizer_final.pkl"),
-        store_objective=False,
-    )
-
-
-def update_live_plot():
-    ax1.clear()
-    ax2.clear()
-
-    iterations = np.arange(1, len(live_losses) + 1)
-
-    ax1.plot(iterations, live_losses, marker="o")
-    ax1.set_title("Iteration vs loss")
-    ax1.set_xlabel("Iteration")
-    ax1.set_ylabel("Objective loss")
-
-    ax2.plot(iterations, live_min_losses, marker="o")
-    ax2.set_title("Iteration vs min loss")
-    ax2.set_xlabel("Iteration")
-    ax2.set_ylabel("Running min loss")
-
-    fig_live.tight_layout()
-    fig_live.canvas.draw()
-    fig_live.canvas.flush_events()
-    plt.pause(0.01)
-
-    fig_live.savefig(
-        os.path.join(save_dir, f"{run_prefix}_live_progress.png"),
-        dpi=300,
-        bbox_inches="tight",
-    )
-
-
 def save_checkpoint(opt):
     np.savez(
         checkpoint_npz,
         trial_log=np.array(trial_log, dtype=object),
         live_losses=np.array(live_losses),
         live_min_losses=np.array(live_min_losses),
-        run_prefix=run_prefix,
-        run_date=run_date,
-        run_time=run_time,
     )
-
     dump(opt, optimizer_checkpoint, store_objective=False)
-
     print("Checkpoint saved.")
 
 
@@ -266,7 +113,7 @@ def load_checkpoint_if_available():
 
     print("No checkpoint found. Starting fresh.")
 
-    opt = Optimizer(
+    return Optimizer(
         dimensions=space,
         base_estimator="GP",
         acq_func="EI",
@@ -274,19 +121,35 @@ def load_checkpoint_if_available():
         n_initial_points=2,
     )
 
-    return opt
+
+def update_live_plot():
+    ax1.clear()
+    ax2.clear()
+
+    iterations = np.arange(1, len(live_losses) + 1)
+
+    ax1.plot(iterations, live_losses, marker="o")
+    ax1.set_title("Iteration vs loss")
+
+    ax2.plot(iterations, live_min_losses, marker="o")
+    ax2.set_title("Iteration vs min loss")
+
+    fig_live.tight_layout()
+    fig_live.canvas.draw()
+    fig_live.canvas.flush_events()
+    plt.pause(0.01)
 
 
 # ------------------------------------------------------------
-# Main optimisation loop
+# Main loop
 # ------------------------------------------------------------
 def main():
     n_calls = 50
-
     opt = load_checkpoint_if_available()
 
     try:
         while len(trial_log) < n_calls:
+
             x = opt.ask()
 
             params = {
@@ -309,17 +172,20 @@ def main():
 
                 objective_val = float(result["objective_val_loss"])
                 final_val_loss = float(result["final_val_loss"])
-                history_val_loss = [
-                    float(v) for v in result["history_val_loss"]
-                ]
 
             except Exception as e:
                 print("Trial failed with params:", params)
                 print("Error:", repr(e))
+                print("Stopping → will resume from last successful trial")
 
-                objective_val = 1e6
-                final_val_loss = 1e6
-                history_val_loss = []
+                if result is not None:
+                    del result
+
+                tf.keras.backend.clear_session()
+                gc.collect()
+
+                save_checkpoint(opt)
+                return   # 🚨 STOP HERE
 
             finally:
                 if result is not None:
@@ -328,86 +194,33 @@ def main():
                 tf.keras.backend.clear_session()
                 gc.collect()
 
-            # Tell optimiser the result, even if the trial failed
+            # ONLY SUCCESSFUL TRIALS REACH HERE
             opt.tell(x, objective_val)
 
             trial_entry = {
-                "trial": int(len(trial_log) + 1),
+                "trial": len(trial_log) + 1,
                 "params": make_json_safe(copy.deepcopy(params)),
-                "objective_val_loss": float(objective_val),
-                "final_val_loss": float(final_val_loss),
-                "history_val_loss": history_val_loss,
+                "objective_val_loss": objective_val,
+                "final_val_loss": final_val_loss,
             }
 
             trial_log.append(trial_entry)
-
-            append_trial_to_master_csv(
-                trial_entry=trial_entry,
-                filename=all_trials_filename,
-                run_prefix=run_prefix,
-                run_date=run_date,
-                run_time=run_time,
-            )
 
             live_losses.append(objective_val)
             live_min_losses.append(min(live_losses))
 
             update_live_plot()
 
-            save_trial_log_csv(
-                trial_log,
-                os.path.join(save_dir, f"{run_prefix}_all_trials.csv"),
-            )
-
-            np.savez(
-                os.path.join(save_dir, f"{run_prefix}_all_trials.npz"),
-                all_trials=np.array(trial_log, dtype=object),
-                live_losses=np.array(live_losses),
-                live_min_losses=np.array(live_min_losses),
-                run_date=run_date,
-                run_time=run_time,
-            )
-
-            # This is the main failsafe checkpoint
             save_checkpoint(opt)
 
-            print(f"Trial {len(trial_log)} objective: {objective_val:.8f}")
-            print(f"Params: {params}")
-            print(f"Running best loss: {min(live_losses):.8f}")
-            print("-" * 60)
+            print(f"Trial {len(trial_log)}: {objective_val:.6f}")
+            print("-" * 50)
 
     except KeyboardInterrupt:
-        print("\nOptimisation stopped manually.")
+        print("Stopped manually")
         save_checkpoint(opt)
 
-    if trial_log:
-        best_trial = min(trial_log, key=lambda x: x["objective_val_loss"])
-        best_params = make_json_safe(copy.deepcopy(best_trial["params"]))
-
-        best_pdict = get_base_pdict()
-        best_pdict.update(best_params)
-        best_pdict = make_json_safe(best_pdict)
-
-        best_loss = float(best_trial["objective_val_loss"])
-
-        print("\nBest result so far")
-        print("Best objective:", best_loss)
-        print("Best parameters:")
-        for k, v in best_pdict.items():
-            print(f"{k}: {v}")
-
-        save_best_results(best_pdict, best_loss, trial_log, run_prefix)
-
-    save_optimizer_final(opt, run_prefix)
-
-    fig_live.savefig(
-        os.path.join(save_dir, f"{run_prefix}_final_progress.png"),
-        dpi=300,
-        bbox_inches="tight",
-    )
-
-    plt.ioff()
-    plt.show()
+    print("Finished optimisation.")
 
 
 if __name__ == "__main__":
