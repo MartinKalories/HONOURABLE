@@ -14,7 +14,7 @@ from scipy.optimize import differential_evolution
 # File path
 # --------------------------------------------------
 DATA_DIR = Path("/home/manav/PL-NN-testdata_forDec2025/")
-DEFAULT_CSV = "bayesopt_20260428-2221_all_trials.csv"
+DEFAULT_CSV = "bayesopt_20260428-2037_all_trials.csv"
 
 csv_path = DATA_DIR / DEFAULT_CSV
 df = pd.read_csv(csv_path)
@@ -57,51 +57,13 @@ labels = [
 
 
 # --------------------------------------------------
-# Choose KDE temperature
+# Convert loss into KDE weights
 # Lower loss = better
 # --------------------------------------------------
 T = 1
 
 goodness = np.exp(-(loss - loss.min()) / T)
 weights = goodness / goodness.sum()
-
-
-# --------------------------------------------------
-# Plot combined weights vs loss for different T values
-# --------------------------------------------------
-def plot_weights_vs_loss_combined(loss, csv_path, T_values):
-    output_dir = csv_path.parent / f"KDE_{csv_path.stem}_plots"
-    output_dir.mkdir(exist_ok=True)
-
-    loss = np.asarray(loss, dtype=float)
-
-    plt.figure(figsize=(7, 5))
-
-    for T_val in T_values:
-        goodness_T = np.exp(-(loss - loss.min()) / T_val)
-        weights_T = goodness_T / goodness_T.sum()
-
-        order = np.argsort(loss)
-
-        plt.plot(
-            loss[order],
-            weights_T[order],
-            marker="o",
-            label=f"T = {T_val}",
-        )
-
-    plt.xlabel("Objective val loss")
-    plt.ylabel("KDE weight")
-    plt.title("Effect of T on KDE weights")
-    plt.legend()
-    plt.grid(alpha=0.3)
-    plt.tight_layout()
-
-    save_path = output_dir / "weights_vs_loss_combined_T_values.png"
-    plt.savefig(save_path, dpi=300)
-    plt.show()
-
-    print("Combined weights vs loss plot saved to:", save_path)
 
 
 # --------------------------------------------------
@@ -181,6 +143,7 @@ def find_5d_kde_optimum(df, loss, csv_path, T=1, bw_method=None):
 
     samples_5d = df[params_5d].to_numpy(dtype=float)
 
+    # Log-transform large-scale parameters
     samples_5d[:, 0] = np.log10(samples_5d[:, 0])      # learningRate
     samples_5d[:, 4] = np.log10(samples_5d[:, 4])      # n_units_dense
 
@@ -240,6 +203,24 @@ def find_5d_kde_optimum(df, loss, csv_path, T=1, bw_method=None):
 # Convert 5D point into 6D plotting space
 # --------------------------------------------------
 def make_5d_point_for_2d_plots(optimum_5d_transformed):
+    """
+    Original 2D plot samples use this order:
+    0 log10(learningRate)
+    1 dropout_rate
+    2 dropout_rate_dense
+    3 dropout_rate_psf
+    4 loss_weight
+    5 log10(n_units_dense)
+
+    The 5D KDE uses:
+    0 log10(learningRate)
+    1 dropout_rate
+    2 dropout_rate_dense
+    3 dropout_rate_psf
+    4 log10(n_units_dense)
+
+    Since loss_weight is not included in the 5D KDE, set it to NaN.
+    """
     point_6d = np.full(6, np.nan)
 
     point_6d[0] = optimum_5d_transformed[0]  # log10 learningRate
@@ -475,12 +456,6 @@ def save_kde_results(samples, weights, labels, csv_path, kde5d_point=None, grids
 # --------------------------------------------------
 # Run everything
 # --------------------------------------------------
-
-# Plot how T changes the loss-to-weight conversion
-T_values = [0.01, 0.05, 0.1, 0.5, 1, 2, 5]
-plot_weights_vs_loss_combined(loss, csv_path, T_values)
-
-# Find 5D optimum using chosen T
 optimum_5d_transformed, optimum_5d_physical = find_5d_kde_optimum(
     df=df,
     loss=loss,
@@ -490,7 +465,6 @@ optimum_5d_transformed, optimum_5d_physical = find_5d_kde_optimum(
 
 kde5d_point_for_2d = make_5d_point_for_2d_plots(optimum_5d_transformed)
 
-# Plot/save KDE results
 plot_kde_1d(samples, weights, labels, csv_path)
 
 plot_kde_pairs(
