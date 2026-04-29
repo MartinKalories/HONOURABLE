@@ -18,7 +18,7 @@ from thirdopt import train_one_run, get_base_pdict, datadir
 # ------------------------------------------------------------
 # Run ID (CHANGE THIS ONLY WHEN YOU WANT A NEW EXPERIMENT)
 # ------------------------------------------------------------
-RUN_ID = "bayesopt_current"
+RUN_ID = "bayesopt_10ksub"
 
 save_dir = datadir
 os.makedirs(save_dir, exist_ok=True)
