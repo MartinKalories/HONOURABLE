@@ -54,9 +54,11 @@ timestamp = f"{run_date}-{run_time}"
 run_prefix = f"bayesopt_{timestamp}"
 
 all_trials_filename = os.path.join(save_dir, "all_trial_results.csv")
+RUN_ID = "bayesopt_current"
+run_prefix = RUN_ID
 
-checkpoint_npz = os.path.join(save_dir, "bayesopt_checkpoint.npz")
-optimizer_checkpoint = os.path.join(save_dir, "bayesopt_optimizer_checkpoint.pkl")
+checkpoint_npz = os.path.join(save_dir, f"{run_prefix}_checkpoint.npz")
+optimizer_checkpoint = os.path.join(save_dir, f"{run_prefix}_optimizer_checkpoint.pkl")
 
 
 # ------------------------------------------------------------
