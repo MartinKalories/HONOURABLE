@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 
 from scipy.stats import gaussian_kde
 from scipy.integrate import trapezoid
+from scipy.optimize import differential_evolution
 
 
 # --------------------------------------------------
@@ -22,7 +23,7 @@ print("Loaded:", csv_path)
 
 
 # --------------------------------------------------
-# Parameters to analyse
+# Parameters to analyse for 1D and 2D plots
 # --------------------------------------------------
 params = [
     "learningRate",
@@ -61,8 +62,8 @@ labels = [
 # --------------------------------------------------
 T = 1
 
-weights = np.exp(-(loss - loss.min()) / T)
-weights /= weights.sum()
+goodness = np.exp(-(loss - loss.min()) / T)
+weights = goodness / goodness.sum()
 
 
 # --------------------------------------------------
@@ -129,6 +130,109 @@ def kde_2d(x, y, w, grids=200, bw_method=None):
 
 
 # --------------------------------------------------
+# Find 5D KDE optimum
+# --------------------------------------------------
+def find_5d_kde_optimum(df, loss, csv_path, T=1, bw_method=None):
+    params_5d = [
+        "learningRate",
+        "dropout_rate",
+        "dropout_rate_dense",
+        "dropout_rate_psf",
+        "n_units_dense",
+    ]
+
+    samples_5d = df[params_5d].to_numpy(dtype=float)
+
+    # Log-transform large-scale parameters
+    samples_5d[:, 0] = np.log10(samples_5d[:, 0])      # learningRate
+    samples_5d[:, 4] = np.log10(samples_5d[:, 4])      # n_units_dense
+
+    goodness_5d = np.exp(-(loss - loss.min()) / T)
+    weights_5d = goodness_5d / goodness_5d.sum()
+
+    kde = gaussian_kde(
+        samples_5d.T,
+        weights=weights_5d,
+        bw_method=bw_method,
+    )
+
+    bounds = [
+        (samples_5d[:, k].min(), samples_5d[:, k].max())
+        for k in range(samples_5d.shape[1])
+    ]
+
+    def negative_kde_density(x):
+        x = np.asarray(x).reshape(5, 1)
+        return -kde(x)[0]
+
+    result = differential_evolution(
+        negative_kde_density,
+        bounds=bounds,
+        seed=42,
+        polish=True,
+    )
+
+    optimum_5d_transformed = result.x
+    peak_density_5d = -result.fun
+
+    optimum_physical = {
+        "learningRate": 10 ** optimum_5d_transformed[0],
+        "dropout_rate": optimum_5d_transformed[1],
+        "dropout_rate_dense": optimum_5d_transformed[2],
+        "dropout_rate_psf": optimum_5d_transformed[3],
+        "n_units_dense": 10 ** optimum_5d_transformed[4],
+        "log10_learningRate": optimum_5d_transformed[0],
+        "log10_n_units_dense": optimum_5d_transformed[4],
+        "kde_peak_density_5d": peak_density_5d,
+        "T": T,
+    }
+
+    output_path = csv_path.parent / f"KDE_5D_{csv_path.name}"
+    pd.DataFrame([optimum_physical]).to_csv(output_path, index=False)
+
+    print("\n5D KDE optimum:")
+    for k, v in optimum_physical.items():
+        print(f"{k}: {v}")
+
+    print("5D KDE result saved to:", output_path)
+
+    return optimum_5d_transformed, optimum_physical
+
+
+# --------------------------------------------------
+# Convert 5D point into 6D plotting space
+# --------------------------------------------------
+def make_5d_point_for_2d_plots(optimum_5d_transformed):
+    """
+    Original 2D plot samples use this order:
+    0 log10(learningRate)
+    1 dropout_rate
+    2 dropout_rate_dense
+    3 dropout_rate_psf
+    4 loss_weight
+    5 log10(n_units_dense)
+
+    The 5D KDE uses:
+    0 log10(learningRate)
+    1 dropout_rate
+    2 dropout_rate_dense
+    3 dropout_rate_psf
+    4 log10(n_units_dense)
+
+    Since loss_weight is not included in the 5D KDE, set it to NaN.
+    """
+    point_6d = np.full(6, np.nan)
+
+    point_6d[0] = optimum_5d_transformed[0]  # log10 learningRate
+    point_6d[1] = optimum_5d_transformed[1]  # dropout_rate
+    point_6d[2] = optimum_5d_transformed[2]  # dropout_rate_dense
+    point_6d[3] = optimum_5d_transformed[3]  # dropout_rate_psf
+    point_6d[5] = optimum_5d_transformed[4]  # log10 n_units_dense
+
+    return point_6d
+
+
+# --------------------------------------------------
 # Plot and save 1D KDE graphs
 # --------------------------------------------------
 def plot_kde_1d(samples, weights, labels, csv_path, grids=400):
@@ -158,11 +262,13 @@ def plot_kde_1d(samples, weights, labels, csv_path, grids=400):
             s=80,
             color="black",
             zorder=10,
+            label="1D KDE peak",
         )
 
         plt.xlabel(labels[k])
         plt.ylabel("Marginal PDF (KDE)")
         plt.title(f"1D KDE: {labels[k]}")
+        plt.legend()
         plt.tight_layout()
 
         filename = (
@@ -193,7 +299,7 @@ def plot_kde_1d(samples, weights, labels, csv_path, grids=400):
 # --------------------------------------------------
 # Plot and save 2D KDE graphs
 # --------------------------------------------------
-def plot_kde_pairs(samples, weights, labels, csv_path, grids=200, levels=30):
+def plot_kde_pairs(samples, weights, labels, csv_path, kde5d_point=None, grids=200, levels=30):
     output_dir = csv_path.parent / f"KDE_{csv_path.stem}_plots"
     output_dir.mkdir(exist_ok=True)
 
@@ -234,8 +340,10 @@ def plot_kde_pairs(samples, weights, labels, csv_path, grids=200, levels=30):
             samples[:, j],
             s=25,
             alpha=0.45,
+            label="Trials",
         )
 
+        # 2D KDE peak
         max_idx = np.unravel_index(np.argmax(Z), Z.shape)
         kde_peak_x = X[max_idx]
         kde_peak_y = Y[max_idx]
@@ -248,9 +356,26 @@ def plot_kde_pairs(samples, weights, labels, csv_path, grids=200, levels=30):
             edgecolor="white",
             linewidths=2,
             color="black",
-            label="KDE peak",
+            label="2D KDE peak",
             zorder=10,
         )
+
+        # 5D KDE optimum projected onto this 2D plane
+        if kde5d_point is not None:
+            x5 = kde5d_point[i]
+            y5 = kde5d_point[j]
+
+            if not np.isnan(x5) and not np.isnan(y5):
+                plt.scatter(
+                    x5,
+                    y5,
+                    s=150,
+                    marker="x",
+                    color="red",
+                    linewidths=3,
+                    label="5D KDE optimum",
+                    zorder=11,
+                )
 
         plt.xlabel(labels[i])
         plt.ylabel(labels[j])
@@ -276,7 +401,7 @@ def plot_kde_pairs(samples, weights, labels, csv_path, grids=200, levels=30):
 # --------------------------------------------------
 # Save 2D KDE peak numerical results
 # --------------------------------------------------
-def save_kde_results(samples, weights, labels, csv_path, grids=200):
+def save_kde_results(samples, weights, labels, csv_path, kde5d_point=None, grids=200):
     results = []
 
     for i, j in combinations(range(samples.shape[1]), 2):
@@ -294,20 +419,31 @@ def save_kde_results(samples, weights, labels, csv_path, grids=200):
                 "kde_peak_x": np.nan,
                 "kde_peak_y": np.nan,
                 "peak_density": np.nan,
+                "kde5d_x": np.nan,
+                "kde5d_y": np.nan,
                 "status": "skipped_not_enough_variation",
             })
             continue
 
         max_idx = np.unravel_index(np.argmax(Z), Z.shape)
 
-        results.append({
+        row = {
             "param_x": labels[i],
             "param_y": labels[j],
             "kde_peak_x": X[max_idx],
             "kde_peak_y": Y[max_idx],
             "peak_density": Z[max_idx],
             "status": "ok",
-        })
+        }
+
+        if kde5d_point is not None:
+            row["kde5d_x"] = kde5d_point[i]
+            row["kde5d_y"] = kde5d_point[j]
+        else:
+            row["kde5d_x"] = np.nan
+            row["kde5d_y"] = np.nan
+
+        results.append(row)
 
     results_df = pd.DataFrame(results)
 
@@ -320,6 +456,29 @@ def save_kde_results(samples, weights, labels, csv_path, grids=200):
 # --------------------------------------------------
 # Run everything
 # --------------------------------------------------
+optimum_5d_transformed, optimum_5d_physical = find_5d_kde_optimum(
+    df=df,
+    loss=loss,
+    csv_path=csv_path,
+    T=T,
+)
+
+kde5d_point_for_2d = make_5d_point_for_2d_plots(optimum_5d_transformed)
+
 plot_kde_1d(samples, weights, labels, csv_path)
-plot_kde_pairs(samples, weights, labels, csv_path)
-save_kde_results(samples, weights, labels, csv_path)
+
+plot_kde_pairs(
+    samples=samples,
+    weights=weights,
+    labels=labels,
+    csv_path=csv_path,
+    kde5d_point=kde5d_point_for_2d,
+)
+
+save_kde_results(
+    samples=samples,
+    weights=weights,
+    labels=labels,
+    csv_path=csv_path,
+    kde5d_point=kde5d_point_for_2d,
+)
