@@ -59,7 +59,7 @@ labels = [
 # Convert loss into KDE weights
 # Lower loss = better
 # --------------------------------------------------
-T = 0.05
+T = 1
 
 weights = np.exp(-(loss - loss.min()) / T)
 weights /= weights.sum()
