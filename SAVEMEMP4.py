@@ -172,6 +172,13 @@ def main():
 
                 objective_val = float(result["objective_val_loss"])
                 final_val_loss = float(result["final_val_loss"])
+                if not np.isfinite(objective_val):
+                    print("NaN loss → skipping trial")
+
+                    tf.keras.backend.clear_session()
+                    gc.collect()
+
+                    continue   # skip this trial
 
             except Exception as e:
                 print("Trial failed with params:", params)
