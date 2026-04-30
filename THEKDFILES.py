@@ -43,7 +43,7 @@ loss = df[loss_col].to_numpy(dtype=float)
 # Transform large-scale parameters
 # --------------------------------------------------
 samples[:, 0] = np.log10(samples[:, 0])      # learningRate
-samples[:, 5] = np.log10(samples[:, 5])      # n_units_dense
+samples[:, 4] = np.log10(samples[:, 4])      # n_units_dense
 
 labels = [
     "log10(learningRate)",
@@ -218,15 +218,16 @@ def make_5d_point_for_2d_plots(optimum_5d_transformed):
 
     Since loss_weight is not included in the 5D KDE, set it to NaN.
     """
-    point_6d = np.full(6, np.nan)
+    
+    point_5d = np.full(5, np.nan)
 
-    point_6d[0] = optimum_5d_transformed[0]  # log10 learningRate
-    point_6d[1] = optimum_5d_transformed[1]  # dropout_rate
-    point_6d[2] = optimum_5d_transformed[2]  # dropout_rate_dense
-    point_6d[3] = optimum_5d_transformed[3]  # dropout_rate_psf
-    point_6d[5] = optimum_5d_transformed[4]  # log10 n_units_dense
+    point_5d[0] = optimum_5d_transformed[0]  # log10 learningRate
+    point_5d[1] = optimum_5d_transformed[1]  # dropout_rate
+    point_5d[2] = optimum_5d_transformed[2]  # dropout_rate_dense
+    point_5d[3] = optimum_5d_transformed[3]  # dropout_rate_psf
+    point_5d[4] = optimum_5d_transformed[4]  # log10 n_units_dense
 
-    return point_6d
+    return point_5d
 
 
 # --------------------------------------------------
