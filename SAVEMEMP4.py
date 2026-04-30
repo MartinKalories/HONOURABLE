@@ -45,7 +45,6 @@ space = [
     Categorical([64, 96, 128], name="nfilts_enc"),
     Categorical([32, 64, 96], name="nfilts_psf"),
     Categorical([32, 64, 96], name="nfilts_wf"),
-    Real(0.5, 3.0, name="loss_weight"),
     Categorical(["relu", "elu", "gelu"], name="actFunc"),
 ]
 
