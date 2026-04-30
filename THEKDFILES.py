@@ -30,7 +30,6 @@ params = [
     "dropout_rate",
     "dropout_rate_dense",
     "dropout_rate_psf",
-    "loss_weight",
     "n_units_dense",
 ]
 
