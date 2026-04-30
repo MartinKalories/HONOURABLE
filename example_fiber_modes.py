@@ -55,11 +55,11 @@ print("Total number of scalar modes:", f.nmodes)
 # indexed by LP mode group (not counting degenerate orientations).
 # For modes with l > 0 there are two degenerate orientations (cos and sin).
 #
-   f.allmodefields_cos_cart  — list of 2D arrays, cos-oriented, Cartesian
-   f.allmodefields_sin_cart  — list of 2D arrays, sin-oriented, Cartesian
-   f.nLPmodes                — number of unique LP mode groups
-   f.nmodes                  — total modes including degenerate pairs
-   f.microns_per_pixel       — spatial scale of each array
+#   f.allmodefields_cos_cart  — list of 2D arrays, cos-oriented, Cartesian
+ #  f.allmodefields_sin_cart  — list of 2D arrays, sin-oriented, Cartesian
+#   f.nLPmodes                — number of unique LP mode groups
+#   f.nmodes                  — total modes including degenerate pairs
+#   f.microns_per_pixel       — spatial scale of each array
 # -------------------------------------------------------------------------
 
 # Single mode field: LP01 (index 0), cos orientation
@@ -80,7 +80,7 @@ print("All cos mode fields shape:", all_cos_fields.shape)
 all_fields = np.array(f.allmodefields_rsoftorder)
 print("All mode fields (with degeneracies) shape:", all_fields.shape)
 
-all_fields = np.array(f.allmodefields_rsoftorder)
+#all_fields = np.array(f.allmodefields_rsoftorder)
 
 # ------------------------------------------------------------
 # Convert mode fields into a matrix
