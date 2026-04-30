@@ -80,32 +80,69 @@ print("All cos mode fields shape:", all_cos_fields.shape)
 all_fields = np.array(f.allmodefields_rsoftorder)
 print("All mode fields (with degeneracies) shape:", all_fields.shape)
 
+all_fields = np.array(f.allmodefields_rsoftorder)
 
+# ------------------------------------------------------------
+# Convert mode fields into a matrix
+# ------------------------------------------------------------
+
+# all_fields shape: (nmodes, ny, nx)
+nmodes, ny, nx = all_fields.shape
+
+# Flatten each 2D mode into a 1D vector
+# Result shape: (ny*nx, nmodes)
+mode_matrix = all_fields.reshape(nmodes, ny * nx).T
+
+print("Mode matrix shape:", mode_matrix.shape)
+# rows = pixels
+# columns = modes
+
+
+# ------------------------------------------------------------
+# Example: select first mode only
+# ------------------------------------------------------------
+
+coeffs = np.zeros((nmodes, 1))
+coeffs[0, 0] = 1.0
+
+output_flat = mode_matrix @ coeffs      # shape: (ny*nx, 1)
+output_field = output_flat.reshape(ny, nx)
+
+print("Output field shape:", output_field.shape)
+
+
+# Plot result
+plt.figure()
+plt.imshow(output_field, cmap="bwr")
+plt.colorbar(label="Field amplitude")
+plt.title("Reconstructed field from mode coefficients")
+plt.tight_layout()
+plt.show()
 # -------------------------------------------------------------------------
 # Optional: generate RSoft beamprop launch commands for each mode.
 # Set make_rsoft_commands = True and update indfile/base_prefix to match
 # your RSoft project.
 # -------------------------------------------------------------------------
-make_rsoft_commands = False
+#make_rsoft_commands = False
 
-if make_rsoft_commands:
-    indfile = 'your_structure.ind'
-    base_prefix = indfile[:-4] + '_scan01'
-    commands_outfile = './outputs/rsoft_commands.txt'
-    hide_sim_window = True
+#if make_rsoft_commands:
+    #indfile = 'your_structure.ind'
+    #base_prefix = indfile[:-4] + '_scan01'
+   # commands_outfile = './outputs/rsoft_commands.txt'
+   # hide_sim_window = True
 
-    hide_cmd = '-hide ' if hide_sim_window else ''
-    all_cmds = []
-    for mode in f.lp_mode_list:
-        cur_prefix = base_prefix + '_LP%d%d' % (mode[0], mode[1])
-        cur_cmd = ('bsimw32 ' + hide_cmd + indfile +
-                   ' prefix=' + cur_prefix +
-                   ' launch_mode=%d' % mode[0] +
-                   ' launch_mode_radial=%d' % mode[1] +
-                   ' wait=0')
-        all_cmds.append(cur_cmd)
+   # hide_cmd = '-hide ' if hide_sim_window else ''
+   # all_cmds = []
+   # for mode in f.lp_mode_list:
+       # cur_prefix = base_prefix + '_LP%d%d' % (mode[0], mode[1])
+       # cur_cmd = ('bsimw32 ' + hide_cmd + indfile +
+        #           ' prefix=' + cur_prefix +
+         #          ' launch_mode=%d' % mode[0] +
+         #          ' launch_mode_radial=%d' % mode[1] +
+         #          ' wait=0')
+      #  all_cmds.append(cur_cmd)
 
-    with open(commands_outfile, 'w') as fout:
-        for cmd in all_cmds:
-            fout.write(cmd + '\n')
-    print("RSoft commands written to", commands_outfile)
+ #   with open(commands_outfile, 'w') as fout:
+    #    for cmd in all_cmds:
+     #       fout.write(cmd + '\n')
+  #  print("RSoft commands written to", commands_outfile)
