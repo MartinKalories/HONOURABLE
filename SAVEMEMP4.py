@@ -285,11 +285,17 @@ def main():
                 # NaN / Inf guard
                 # ------------------------------------------------
                 if not np.isfinite(objective_val):
-                    print("NaN/Inf loss detected → assigning penalty loss = 100")
+                    print("NaN or Inf loss detected. Skipping this trial.")
                     print("Params:", params)
 
-                    objective_val = 100.0
-                    final_val_loss = 100.0
+                    if result is not None:
+                        del result
+                        result = None
+
+                    tf.keras.backend.clear_session()
+                    gc.collect()
+
+                    continue
 
             except Exception as e:
                 print("Trial crashed with params:", params)
