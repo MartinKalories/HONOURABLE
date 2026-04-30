@@ -39,7 +39,6 @@ space = [
     Real(0.0, 0.6, name="dropout_rate_dense"),
     Real(0.0, 0.8, name="dropout_rate_psf"),
     Integer(512, 4096, name="n_units_dense"),
-    Categorical([16, 32, 64], name="batchSize"),
     Categorical([3, 5, 7], name="ksz_enc"),
     Categorical([3, 5], name="ksz_psf"),
     Categorical([3, 5], name="ksz_wf"),
