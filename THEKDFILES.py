@@ -50,7 +50,6 @@ labels = [
     "dropout_rate",
     "dropout_rate_dense",
     "dropout_rate_psf",
-    "loss_weight",
     "log10(n_units_dense)",
 ]
 
@@ -208,8 +207,7 @@ def make_5d_point_for_2d_plots(optimum_5d_transformed):
     1 dropout_rate
     2 dropout_rate_dense
     3 dropout_rate_psf
-    4 loss_weight
-    5 log10(n_units_dense)
+    4 log10(n_units_dense)
 
     The 5D KDE uses:
     0 log10(learningRate)
