@@ -24,10 +24,10 @@ if 'Linux' in os_name:
 import matplotlib.pyplot as plt
 plt.ion()
 
+
 # ------------------------------------------------------------------
 # Static config
 # ------------------------------------------------------------------
-#datadir = '/Users/manavkalra/Downloads/PL-NN-testdata_forDec2025/'
 datadir = '/home/manav//PL-NN-testdata_forDec2025/'
 slmdatadir = datadir
 outdir = datadir
@@ -47,7 +47,7 @@ plim_cropsz = 128
 mask_pupil = True
 rescale_wfim = 0.188
 convert_slm2rad = True
-slmrange = 4*np.pi
+slmrange = 4 * np.pi
 psfim_cropcnt = [139, 134]
 psfim_cropsz = 48
 rescale_psfim = 2
@@ -60,7 +60,8 @@ shuffle_before_split = False
 use_subset = 10000
 num_preds = 100
 do_subset_on_read = False
-    
+
+
 BASE_PDICT = {
     'actFunc': 'gelu',
     'batchSize': 16,
@@ -86,7 +87,6 @@ BASE_PDICT = {
     'reduceLR_min_lr': 1e-6,
     'reduceLR_cooldown': 5,
 }
-
 
 _DATA_CACHE = None
 
@@ -135,53 +135,44 @@ def plot_truepredims(true_im, pred_im, true_im2, pred_im2, camera_im=None, pause
 
 
 def load_prepared_data():
-    """
-    Loads, normalises, and splits the data once.
-    Cached so Bayesian optimisation does not re-read the NPZ files every trial.
-    """
     global _DATA_CACHE
     if _DATA_CACHE is not None:
         return _DATA_CACHE
 
     metadata = {}
 
-    # Load PL data
     plsavefname = load_precombined_PLims_filename + '.npz'
     print('Loading pl images from ' + plsavefname)
     npf = np.load(datadir + plsavefname, allow_pickle=True)
     all_plims = npf['all_plims']
     if do_subset_on_read and use_subset is not None:
         all_plims = all_plims[:use_subset, :, :]
-    all_slmims_filenames = npf['all_slmims_filenames']
 
-    # Load PSF data
     if precombined_psf_filename is None:
         psfsavefname = load_precombined_PLims_filename + '-PSFs' + '.npz'
     else:
         psfsavefname = precombined_psf_filename + '.npz'
+
     print('Loading psf images from ' + psfsavefname)
     npf = np.load(datadir + psfsavefname, allow_pickle=True)
     all_psfims = npf['all_psfims']
     if do_subset_on_read and use_subset is not None:
         all_psfims = all_psfims[:use_subset, :, :]
+
     datafilename = plsavefname
 
-    # Load WF data
     wfsavefname = load_precombined_wfims_filename + '.npz'
     print('Loading wf images from ' + wfsavefname)
     npf = np.load(slmdatadir + wfsavefname, allow_pickle=True)
     all_pupphase = npf['all_pupphase']
     if do_subset_on_read and use_subset is not None:
         all_pupphase = all_pupphase[:use_subset, :, :]
-    slmloc = npf['slmloc']
 
-    # Apply subset
     if use_subset is not None and do_subset_on_read is False:
         all_plims = all_plims[:use_subset, :, :]
         all_pupphase = all_pupphase[:use_subset, :, :]
         all_psfims = all_psfims[:use_subset, :, :]
 
-    # Normalise
     normfacts = {}
 
     mn = np.mean(all_plims[:stat_frms])
@@ -206,14 +197,6 @@ def load_prepared_data():
     ydata_wf = all_pupphase
     ydata_psf = all_psfims
 
-    if addnoise_PL is not None:
-        Xdata = Xdata + np.random.normal(0, addnoise_PL, Xdata.shape)
-    if addnoise_PSF is not None:
-        ydata_psf = ydata_psf + np.random.normal(0, addnoise_PSF, ydata_psf.shape)
-    if addnoise_WF is not None:
-        ydata_wf = ydata_wf + np.random.normal(0, addnoise_WF, ydata_wf.shape)
-
-    # Split train/test exactly like your original code
     ndata = Xdata.shape[0]
     n_testdata = int(ndata * testdatasplit)
     splitinds = [0, int(n_testdata)]
@@ -245,13 +228,13 @@ def load_prepared_data():
         "metadata": metadata,
         "datafilename": datafilename,
     }
+
     return _DATA_CACHE
 
 
 def build_model(pdict, Xndims, yndims_psf, yndims_wf):
     input_img = Input(shape=(Xndims[0], Xndims[1], 1))
 
-    # Encoder
     model_enc = Conv2D(pdict['nfilts_enc'], (pdict['ksz_enc'], pdict['ksz_enc']),
                        activation=pdict['actFunc'], padding='same')(input_img)
     model_enc = Dropout(pdict['dropout_rate'])(model_enc)
@@ -272,11 +255,9 @@ def build_model(pdict, Xndims, yndims_psf, yndims_wf):
     model_enc = Dropout(pdict['dropout_rate'])(model_enc)
     model_enc = MaxPooling2D((2, 2), padding='same')(model_enc)
 
-    # Bottleneck
     model_enc = Conv2D(pdict['nfilts_enc'], (pdict['ksz_enc'], pdict['ksz_enc']),
                        activation=pdict['actFunc'], padding='same', name='Bottleneck')(model_enc)
 
-    # Dense after encoding
     if pdict['n_units_dense'] > 0:
         post_enc_shape = model_enc.shape[1:]
         post_dense_shape = post_enc_shape
@@ -289,7 +270,6 @@ def build_model(pdict, Xndims, yndims_psf, yndims_wf):
         model_enc = Dense(int(np.prod(post_dense_shape)), activation=pdict['actFunc'])(model_enc)
         model_enc = Reshape(post_dense_shape)(model_enc)
 
-    # PSF decoder
     model_psf = Conv2D(pdict['nfilts_psf'], (pdict['ksz_psf'], pdict['ksz_psf']),
                        activation=pdict['actFunc'], padding='same')(model_enc)
     model_psf = Conv2D(pdict['nfilts_psf'], (pdict['ksz_psf'], pdict['ksz_psf']),
@@ -322,7 +302,6 @@ def build_model(pdict, Xndims, yndims_psf, yndims_wf):
     model_psf = Conv2D(1, (pdict['ksz_psf'], pdict['ksz_psf']),
                        activation='linear', padding='same', name='outlayer_psf')(model_psf)
 
-    # WF decoder
     model_wf = Conv2D(pdict['nfilts_wf'], (pdict['ksz_wf'], pdict['ksz_wf']),
                       activation=pdict['actFunc'], padding='same')(model_enc)
     model_wf = Dropout(pdict['dropout_rate'])(model_wf)
@@ -368,7 +347,7 @@ def build_model(pdict, Xndims, yndims_psf, yndims_wf):
 
 
 def train_one_run(
-    pdict_override= None, # for optimiser run params, for regular = none
+    pdict_override=None,
     do_predictions=False,
     do_plotting=False,
     save_model=False,
@@ -377,10 +356,10 @@ def train_one_run(
     verbose=0,
 ):
     pdict = get_base_pdict()
+
     if pdict_override is not None:
         pdict.update(pdict_override)
 
-    # Make sure integer-type params stay integers
     pdict['batchSize'] = int(pdict['batchSize'])
     pdict['ksz_enc'] = int(pdict['ksz_enc'])
     pdict['ksz_psf'] = int(pdict['ksz_psf'])
@@ -390,11 +369,16 @@ def train_one_run(
     pdict['nfilts_wf'] = int(pdict['nfilts_wf'])
     pdict['n_units_dense'] = int(pdict['n_units_dense'])
 
+    print("Actual pdict used:")
+    for k, v in pdict.items():
+        print(k, v)
+
     tf.keras.backend.clear_session()
     tf.random.set_seed(42)
     np.random.seed(42)
 
     data = load_prepared_data()
+
     X_train = data["X_train"]
     y_train_wf = data["y_train_wf"]
     y_train_psf = data["y_train_psf"]
@@ -423,7 +407,6 @@ def train_one_run(
     history_loss = history.history['loss']
     history_val_loss = history.history['val_loss']
 
-    # This is the scalar the Bayesian optimiser should minimise
     objective_val_loss = float(np.min(history_val_loss))
     final_val_loss = float(history_val_loss[-1])
 
@@ -453,34 +436,6 @@ def train_one_run(
         print("Saved loss curve to:", loss_path)
         plt.show()
 
-        num_testims = 10
-        wf_true = y_test_wf[:num_testims, :, :]
-        wf_pred = predictions_wf[:num_testims, :, :]
-        psf_true = y_test_psf[:num_testims, :, :]
-        psf_pred = predictions_psf[:num_testims, :, :]
-        cur_psf_true_og = None
-
-        fig = plt.figure(2, figsize=(9, 8))
-
-        if save_movie:
-            Writer = animation.writers['ffmpeg']
-            writer = Writer(fps=10, metadata=dict(artist='pl'), bitrate=1800)
-            writer.setup(fig, movie_path, dpi=100)
-            print("Saving movie to:", movie_path)
-
-        for k in np.arange(0, num_testims, 1):
-            plot_truepredims(
-                wf_true[k, :, :], wf_pred[k, :, :],
-                psf_true[k, :, :], psf_pred[k, :, :],
-                camera_im=cur_psf_true_og, pausetime=1
-            )
-            if save_movie:
-                writer.grab_frame()
-
-        if save_movie:
-            writer.finish()
-            print("Saved movie to:", movie_path)
-
     return {
         "objective_val_loss": objective_val_loss,
         "final_val_loss": final_val_loss,
@@ -492,14 +447,30 @@ def train_one_run(
 
 
 if __name__ == "__main__":
+    test_params = {
+        "learningRate": 7.365294357616718e-05,
+        "dropout_rate": 0.0,
+        "dropout_rate_dense": 0.26911420973337097,
+        "dropout_rate_psf": 0.2562740487214453,
+        "n_units_dense": 4096,
+        "ksz_enc": 3,
+        "ksz_psf": 3,
+        "ksz_wf": 3,
+        "nfilts_enc": 128,
+        "nfilts_psf": 64,
+        "nfilts_wf": 96,
+        "actFunc": "gelu",
+    }
+
     result = train_one_run(
-        pdict_override=None,
-        do_predictions=True,
-        do_plotting=True,
-        save_model=True,
-        save_preds=True,
-        save_movie=True,
+        pdict_override=test_params,
+        do_predictions=False,
+        do_plotting=False,
+        save_model=False,
+        save_preds=False,
+        save_movie=False,
         verbose=1,
     )
+
     print("Best val_loss seen in run:", result["objective_val_loss"])
     print("Final val_loss:", result["final_val_loss"])
