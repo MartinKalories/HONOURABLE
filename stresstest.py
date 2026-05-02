@@ -74,7 +74,7 @@ BASE_PDICT = {
     'ksz_enc': 3,
     'ksz_psf': 3,
     'ksz_wf': 3,
-    'nfilts_enc': 128,
+    'nfilts_enc': 96,
     'nfilts_psf': 64,
     'nfilts_wf': 96,
     'loss_weight': 0.549,
