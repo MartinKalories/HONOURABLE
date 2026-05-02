@@ -62,7 +62,7 @@ num_preds = 100
 do_subset_on_read = False
     
 BASE_PDICT = {
-    'actFunc': 'relu',
+    'actFunc': 'gelu',
     'batchSize': 16,
     "learningRate": 6.814073755185045e-05,
     "lossFunc_psf": "mean_squared_error",
