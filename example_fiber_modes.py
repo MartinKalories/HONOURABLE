@@ -104,7 +104,7 @@ print("Mode matrix shape:", mode_matrix.shape)
 
 coeffs = np.zeros((nmodes, 1))
 coeffs[0, 0] = 1.0
-
+coeffs[1, 0] = 1.0
 output_flat = mode_matrix @ coeffs      # shape: (ny*nx, 1)
 output_field = output_flat.reshape(ny, nx)
 
