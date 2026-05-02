@@ -487,7 +487,7 @@ def train_one_run(
         "history_val_loss": history_val_loss,
         "history_loss": history_loss,
         "pdict": copy.deepcopy(pdict),
-        "model": model,
+        #"model": model,
     }
 
 
