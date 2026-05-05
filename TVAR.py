@@ -43,7 +43,7 @@ loss = df[loss_col].to_numpy(dtype=float)
 # Transform large-scale parameters
 # --------------------------------------------------
 samples[:, 0] = np.log10(samples[:, 0])      # learningRate
-samples[:, 5] = np.log10(samples[:, 4])      # n_units_dense
+samples[:, 4] = np.log10(samples[:, 4])      # n_units_dense
 
 labels = [
     "log10(learningRate)",
