@@ -30,7 +30,6 @@ params = [
     "dropout_rate",
     "dropout_rate_dense",
     "dropout_rate_psf",
-    "loss_weight",
     "n_units_dense",
 ]
 
@@ -44,14 +43,13 @@ loss = df[loss_col].to_numpy(dtype=float)
 # Transform large-scale parameters
 # --------------------------------------------------
 samples[:, 0] = np.log10(samples[:, 0])      # learningRate
-samples[:, 5] = np.log10(samples[:, 5])      # n_units_dense
+samples[:, 5] = np.log10(samples[:, 4])      # n_units_dense
 
 labels = [
     "log10(learningRate)",
     "dropout_rate",
     "dropout_rate_dense",
     "dropout_rate_psf",
-    "loss_weight",
     "log10(n_units_dense)",
 ]
 
