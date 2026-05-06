@@ -115,5 +115,11 @@ plt.title("PCA reconstruction")
 plt.colorbar()
 
 plt.tight_layout()
+
+save_path = "pca_reconstruction_comparison.png"
+
+plt.savefig(save_path, dpi=300, bbox_inches="tight")
+
+print(f"Saved comparison image to: {save_path}")
 plt.show()
-plt.save()
+
