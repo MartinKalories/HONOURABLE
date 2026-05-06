@@ -116,7 +116,7 @@ plt.colorbar()
 
 plt.tight_layout()
 
-save_path = "pca_reconstruction_comparison.png"
+save_path = f"/home/manav/PL-NN-testdata_forDec2025/PCA_{N_MODES}modes_reconstruction.png"
 
 plt.savefig(save_path, dpi=300, bbox_inches="tight")
 
