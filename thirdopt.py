@@ -57,7 +57,7 @@ keep_orig_psfs = False
 stat_frms = 1000
 testdatasplit = 0.2
 shuffle_before_split = False
-use_subset = 200000
+use_subset = 60000
 num_preds = 100
 do_subset_on_read = False
     
@@ -67,7 +67,7 @@ BASE_PDICT = {
     "learningRate": 6.814073755185045e-05,
     "lossFunc_psf": "mean_squared_error",
     "lossFunc_wf": "mean_squared_error",
-    "epochs": 10,
+    "epochs": 50,
     "dropout_rate": 0.05378660067364384,
     "dropout_rate_dense": 0.0019573719804583177,
     "dropout_rate_psf": 0.2726712051110854,
