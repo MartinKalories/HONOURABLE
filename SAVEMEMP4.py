@@ -20,7 +20,7 @@ from thirdopt import train_one_run, get_base_pdict, datadir
 # Keep this the same to resume a crashed run.
 # Change this when starting a new experiment.
 # ------------------------------------------------------------
-RUN_ID = "bayesopt_current_10ksub_noLW_more_epochs"
+RUN_ID = "bayesopt_current_nosub_noLW_more_epochs"
 
 save_dir = datadir
 os.makedirs(save_dir, exist_ok=True)
