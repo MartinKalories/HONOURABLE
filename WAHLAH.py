@@ -211,10 +211,16 @@ example_target = None
 example_fit = None
 example_residual = None
 
-for i in range(N_TEST):
+test_indices = rng.choice(
+    y_test_psf.shape[0],
+    size=N_TEST,
+    replace=False
+)
+
+for idx in test_indices:
     print(f"\nFitting PSF {i + 1}/{N_TEST}")
 
-    target_psf = resize_target_to_lp_grid(y_test_psf[i], ny, nx)
+    target_psf = y_test_psf[idx]
 
     coeffs_fit, intensity_fit, field_fit, res = fit_lp_coeffs_to_target_intensity(
         mode_matrix=mode_matrix,
