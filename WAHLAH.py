@@ -211,16 +211,10 @@ example_target = None
 example_fit = None
 example_residual = None
 
-test_indices = rng.choice(
-    y_test_psf.shape[0],
-    size=N_TEST,
-    replace=False
-)
-
-for idx in test_indices:
+for i in range(N_TEST):
     print(f"\nFitting PSF {i + 1}/{N_TEST}")
 
-    target_psf = y_test_psf[idx]
+    target_psf = resize_target_to_lp_grid(y_test_psf[i], ny, nx)
 
     coeffs_fit, intensity_fit, field_fit, res = fit_lp_coeffs_to_target_intensity(
         mode_matrix=mode_matrix,
@@ -260,7 +254,7 @@ success_flags = np.array(success_flags)
 
 results_path = os.path.join(
     outdir,
-    f"PSF_LP_fit_results_{N_TEST}psfs_{N_MODES}randmodes.npz"
+    f"PSF_LP_fit_results_{N_TEST}psfs_{N_MODES}modes.npz"
 )
 
 np.savez_compressed(
@@ -277,7 +271,7 @@ print("\nSaved results to:", results_path)
 
 csv_path = os.path.join(
     outdir,
-    f"PSF_LP_fit_summary_{N_TEST}psfs_{N_MODES}randmodes.csv"
+    f"PSF_LP_fit_summary_{N_TEST}psfs_{N_MODES}modes.csv"
 )
 
 summary = np.column_stack([
