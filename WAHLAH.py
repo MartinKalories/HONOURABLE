@@ -260,7 +260,7 @@ success_flags = np.array(success_flags)
 
 results_path = os.path.join(
     outdir,
-    f"PSF_LP_fit_results_{N_TEST}psfs_{N_MODES}modes.npz"
+    f"PSF_LP_fit_results_{N_TEST}psfs_{N_MODES}randmodes.npz"
 )
 
 np.savez_compressed(
@@ -277,7 +277,7 @@ print("\nSaved results to:", results_path)
 
 csv_path = os.path.join(
     outdir,
-    f"PSF_LP_fit_summary_{N_TEST}psfs_{N_MODES}modes.csv"
+    f"PSF_LP_fit_summary_{N_TEST}psfs_{N_MODES}randmodes.csv"
 )
 
 summary = np.column_stack([
