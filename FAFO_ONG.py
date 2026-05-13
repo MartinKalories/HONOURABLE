@@ -98,47 +98,6 @@ print("Resized target shape:", target_image_resized.shape)
 
 
 # --------------------------------------------------
-# Generate synthetic LP intensity dataset for PCA
-# --------------------------------------------------
-X_pca = []
-
-for _ in range(N_SAMPLES):
-    coeffs = np.random.randn(N_MODES, 1) + 1j * np.random.randn(N_MODES, 1)
-    coeffs /= np.linalg.norm(coeffs)
-
-    field_flat = mode_matrix_10 @ coeffs
-    field = field_flat.reshape(ny, nx)
-
-    intensity = np.abs(field) ** 2
-    intensity = intensity / np.max(intensity)
-
-    X_pca.append(intensity.reshape(-1))
-
-X_pca = np.array(X_pca, dtype=np.float32)
-
-print("PCA dataset shape:", X_pca.shape)
-
-
-# --------------------------------------------------
-# PCA reconstruction of target image
-# --------------------------------------------------
-pca = PCA(n_components=N_COMPONENTS)
-pca.fit(X_pca)
-
-target_flat = target_image_resized.reshape(1, -1)
-
-target_pca_coeffs = pca.transform(target_flat)
-target_pca_recon = pca.inverse_transform(target_pca_coeffs)
-target_pca_recon = target_pca_recon.reshape(ny, nx)
-
-target_pca_recon = target_pca_recon - np.min(target_pca_recon)
-target_pca_recon = target_pca_recon / np.max(target_pca_recon)
-
-print("PCA explained variance:")
-print(pca.explained_variance_ratio_)
-
-
-# --------------------------------------------------
 # Least-squares fit of LP coefficients to target intensity
 # --------------------------------------------------
 def fit_lp_coeffs_to_target_intensity(mode_matrix, target_image, ny, nx, max_nfev=2000):
@@ -210,19 +169,7 @@ print("Least-squares LP fit MSE:", ls_mse)
 # --------------------------------------------------
 # Plot comparison
 # --------------------------------------------------
-plt.figure(figsize=(14, 4))
 
-plt.subplot(1, 3, 1)
-plt.imshow(target_image_resized, cmap="inferno")
-plt.title("Target image: X_test[0]")
-plt.colorbar()
-
-plt.subplot(1, 3, 2)
-plt.imshow(target_pca_recon, cmap="inferno")
-plt.title(f"PCA reconstruction\nMSE={pca_mse:.4g}")
-plt.colorbar()
-
-plt.subplot(1, 3, 3)
 plt.imshow(intensity_fit, cmap="inferno")
 plt.title(f"Least-squares LP fit\nMSE={ls_mse:.4g}")
 plt.colorbar()
