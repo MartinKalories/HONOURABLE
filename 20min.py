@@ -127,7 +127,7 @@ print("Generated intensity dataset shape:", intensities.shape)
 # --------------------------------------------------
 dataset_save_path = os.path.join(
     outdir,
-    f"random_LP_dataset_{N_RANDOM_FIELDS}samples_{N_MODES_FIT}modes.npz"
+    f"random_LP_dataset_{N_RANDOM_FIELDS}samples_gen{N_MODES_GENERATE}_fit{N_MODES_FIT}modes.npz"
 )
 
 np.savez_compressed(
@@ -135,17 +135,18 @@ np.savez_compressed(
     intensities=intensities.astype(np.float32),
     coeffs_true_real=coeffs_true.real.astype(np.float32),
     coeffs_true_imag=coeffs_true.imag.astype(np.float32),
-    lp_fields=lp_fields.astype(np.complex64),
+    lp_fields_generate=lp_fields_generate.astype(np.complex64),
+    lp_fields_fit=lp_fields_fit.astype(np.complex64),
     ny=ny,
     nx=nx,
-    N_MODES=N_MODES,
+    N_MODES_GENERATE=N_MODES_GENERATE,
+    N_MODES_FIT=N_MODES_FIT,
     N_RANDOM_FIELDS=N_RANDOM_FIELDS,
     RNG_SEED=RNG_SEED,
 )
 
 print("Saved random LP dataset to:")
 print(dataset_save_path)
-
 
 # --------------------------------------------------
 # Least-squares fitting function
@@ -245,8 +246,6 @@ def align_coeffs_to_true(coeffs_fit, coeffs_true):
 N_TEST = min(N_TEST, N_RANDOM_FIELDS)
 
 intensity_rms_errors = []
-coeff_rms_errors = []
-coeff_relative_rms_errors = []
 costs = []
 nfevs = []
 success_flags = []
@@ -272,25 +271,25 @@ for i in range(N_TEST):
     intensity_rms = np.sqrt(np.mean((intensity_fit - target_image) ** 2))
 
     # Align coefficients before comparing them
-    coeff_fit_aligned = align_coeffs_to_true(coeff_fit, true_coeff)
+   # coeff_fit_aligned = align_coeffs_to_true(coeff_fit, true_coeff)
 
-    coeff_rms = np.sqrt(np.mean(np.abs(coeff_fit_aligned - true_coeff) ** 2))
+   # coeff_rms = np.sqrt(np.mean(np.abs(coeff_fit_aligned - true_coeff) ** 2))
 
-    coeff_relative_rms = (
-        np.linalg.norm(coeff_fit_aligned - true_coeff)
-        / (np.linalg.norm(true_coeff) + 1e-12)
-    )
+    #coeff_relative_rms = (
+    #    np.linalg.norm(coeff_fit_aligned - true_coeff)
+     #   / (np.linalg.norm(true_coeff) + 1e-12)
+   # )
 
     intensity_rms_errors.append(intensity_rms)
-    coeff_rms_errors.append(coeff_rms)
-    coeff_relative_rms_errors.append(coeff_relative_rms)
+    #coeff_rms_errors.append(coeff_rms)
+    #coeff_relative_rms_errors.append(coeff_relative_rms)
     costs.append(res.cost)
     nfevs.append(res.nfev)
     success_flags.append(res.success)
 
     print("Intensity RMS:", intensity_rms)
-    print("Coeff RMS:", coeff_rms)
-    print("Coeff relative RMS:", coeff_relative_rms)
+    #print("Coeff RMS:", coeff_rms)
+    #print("Coeff relative RMS:", coeff_relative_rms)
     print("Optimiser success:", res.success)
 
     if i == 0:
@@ -303,22 +302,18 @@ for i in range(N_TEST):
 # Step 5: Save test results
 # --------------------------------------------------
 intensity_rms_errors = np.array(intensity_rms_errors)
-coeff_rms_errors = np.array(coeff_rms_errors)
-coeff_relative_rms_errors = np.array(coeff_relative_rms_errors)
 costs = np.array(costs)
 nfevs = np.array(nfevs)
 success_flags = np.array(success_flags)
 
 results_save_path = os.path.join(
     outdir,
-    f"LP_fit_test_results_{N_TEST}tests_{N_MODES}modes.npz"
+    f"LP_fit_test_results_{N_TEST}tests_gen{N_MODES_GENERATE}_fit{N_MODES_FIT}modes.npz"
 )
 
 np.savez_compressed(
     results_save_path,
     intensity_rms_errors=intensity_rms_errors,
-    coeff_rms_errors=coeff_rms_errors,
-    coeff_relative_rms_errors=coeff_relative_rms_errors,
     costs=costs,
     nfevs=nfevs,
     success_flags=success_flags,
@@ -327,20 +322,17 @@ np.savez_compressed(
 print("\nSaved fit results to:")
 print(results_save_path)
 
-
 # --------------------------------------------------
 # Save CSV summary
 # --------------------------------------------------
 csv_save_path = os.path.join(
     outdir,
-    f"LP_fit_test_summary_{N_TEST}tests_{N_MODES}modes.csv"
+    f"LP_fit_test_summary_{N_TEST}tests_gen{N_MODES_GENERATE}_fit{N_MODES_FIT}modes.csv"
 )
 
 summary = np.column_stack([
     np.arange(N_TEST),
     intensity_rms_errors,
-    coeff_rms_errors,
-    coeff_relative_rms_errors,
     costs,
     nfevs,
     success_flags.astype(int),
@@ -350,14 +342,12 @@ np.savetxt(
     csv_save_path,
     summary,
     delimiter=",",
-    header="sample,intensity_rms,coeff_rms,coeff_relative_rms,cost,nfev,success",
+    header="sample,intensity_rms,cost,nfev,success",
     comments="",
 )
 
 print("Saved CSV summary to:")
 print(csv_save_path)
-
-
 # --------------------------------------------------
 # Print final averages
 # --------------------------------------------------
@@ -366,10 +356,10 @@ print("Overall fitting results")
 print("==============================")
 print("Mean intensity RMS:", np.mean(intensity_rms_errors))
 print("Median intensity RMS:", np.median(intensity_rms_errors))
-print("Mean coeff RMS:", np.mean(coeff_rms_errors))
-print("Median coeff RMS:", np.median(coeff_rms_errors))
-print("Mean coeff relative RMS:", np.mean(coeff_relative_rms_errors))
-print("Median coeff relative RMS:", np.median(coeff_relative_rms_errors))
+#print("Mean coeff RMS:", np.mean(coeff_rms_errors))
+#print("Median coeff RMS:", np.median(coeff_rms_errors))
+#print("Mean coeff relative RMS:", np.mean(coeff_relative_rms_errors))
+#print("Median coeff relative RMS:", np.median(coeff_relative_rms_errors))
 print("Success rate:", np.mean(success_flags))
 
 
@@ -397,7 +387,7 @@ plt.tight_layout()
 
 plot_save_path = os.path.join(
     outdir,
-    f"LP_random_field_fit_example_{N_MODES}modes.png"
+    f"LP_random_field_fit_example_{N_MODES_FIT}modes.png"
 )
 
 plt.savefig(plot_save_path, dpi=300, bbox_inches="tight")
