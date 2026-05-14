@@ -17,7 +17,7 @@ from sklearn.decomposition import PCA
 # File path
 # ==================================================
 DATA_DIR = Path("/home/manav/PL-NN-testdata_forDec2025/")
-DEFAULT_CSV = "bayesopt_current_nosub_noLW_more_epochs_all_trials.csv"
+DEFAULT_CSV = "bayesopt_current_100ksub_noLW_all_trials.csv"
 
 csv_path = DATA_DIR / DEFAULT_CSV
 df = pd.read_csv(csv_path)
