@@ -21,7 +21,7 @@ n_cladding = 1.4345
 wavelength = 1.55
 core_radius = 32.8 / 2
 # Use more modes to generate the target field
-N_MODES_GENERATE = 20
+N_MODES_GENERATE = 17
 
 # Use fewer modes to fit/reconstruct the target field
 N_MODES_FIT = 10
