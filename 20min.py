@@ -127,7 +127,7 @@ print("Generated intensity dataset shape:", intensities.shape)
 # --------------------------------------------------
 dataset_save_path = os.path.join(
     outdir,
-    f"random_LP_dataset_{N_RANDOM_FIELDS}samples_{N_MODES}modes.npz"
+    f"random_LP_dataset_{N_RANDOM_FIELDS}samples_{N_MODES_FIT}modes.npz"
 )
 
 np.savez_compressed(
