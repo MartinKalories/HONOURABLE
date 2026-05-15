@@ -314,7 +314,7 @@ np.savetxt(
     csv_save_path,
     summary,
     delimiter=",",
-    header="sample,intensity_rms,coeff_rms,nfev,success",
+    header="sample,intensity_rms,coeff_rms,costs,nfev,success",
     comments="",
 )
 
