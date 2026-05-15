@@ -219,7 +219,7 @@ N_TEST = min(N_TEST, N_RANDOM_FIELDS)
 
 intensity_rms_errors = []
 coeff_rms_errors = []
-coeff_relative_rms_errors = []
+
 costs = []
 nfevs = []
 success_flags = []
@@ -333,7 +333,7 @@ print("Mean intensity RMS:", np.mean(intensity_rms_errors))
 print("Median intensity RMS:", np.median(intensity_rms_errors))
 print("Mean coeff RMS:", np.mean(coeff_rms_errors))
 print("Median coeff RMS:", np.median(coeff_rms_errors))
-print("Median coeff relative RMS:", np.median(coeff_relative_rms_errors))
+
 print("Success rate:", np.mean(success_flags))
 
 
