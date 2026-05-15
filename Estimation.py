@@ -258,7 +258,9 @@ for i in range(N_TEST):
     print("Coeff RMS:", coeff_rms)
     print("Optimiser success:", res.success)
 
-    if i == 0:
+    EXAMPLE_SAMPLE = 3
+
+    if i == EXAMPLE_SAMPLE - 1:
         example_target = target_image
         example_fit = intensity_fit
         example_residual =  target_image - intensity_fit 
