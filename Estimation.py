@@ -219,7 +219,6 @@ N_TEST = min(N_TEST, N_RANDOM_FIELDS)
 
 intensity_rms_errors = []
 coeff_rms_errors = []
-
 costs = []
 nfevs = []
 success_flags = []
@@ -249,8 +248,6 @@ for i in range(N_TEST):
     coeff_fit_aligned = align_coeffs_to_true(coeff_fit, true_coeff)
 
     coeff_rms = np.sqrt(np.mean(np.abs(true_coeff - coeff_fit_aligned ) ** 2))
-
-   
     intensity_rms_errors.append(intensity_rms)
     coeff_rms_errors.append(coeff_rms)
     costs.append(res.cost)
