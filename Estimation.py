@@ -248,23 +248,17 @@ for i in range(N_TEST):
     # Align coefficients before comparing them
     coeff_fit_aligned = align_coeffs_to_true(coeff_fit, true_coeff)
 
-    coeff_rms = np.sqrt(np.mean(np.abs(coeff_fit_aligned - true_coeff) ** 2))
+    coeff_rms = np.sqrt(np.mean(np.abs(true_coeff - coeff_fit_aligned ) ** 2))
 
-    coeff_relative_rms = (
-        np.linalg.norm(coeff_fit_aligned - true_coeff)
-        / (np.linalg.norm(true_coeff) + 1e-12)
-    )
-
+   
     intensity_rms_errors.append(intensity_rms)
     coeff_rms_errors.append(coeff_rms)
-    coeff_relative_rms_errors.append(coeff_relative_rms)
     costs.append(res.cost)
     nfevs.append(res.nfev)
     success_flags.append(res.success)
 
     print("Intensity RMS:", intensity_rms)
     print("Coeff RMS:", coeff_rms)
-    print("Coeff relative RMS:", coeff_relative_rms)
     print("Optimiser success:", res.success)
 
     if i == 0:
@@ -278,7 +272,6 @@ for i in range(N_TEST):
 # --------------------------------------------------
 intensity_rms_errors = np.array(intensity_rms_errors)
 coeff_rms_errors = np.array(coeff_rms_errors)
-coeff_relative_rms_errors = np.array(coeff_relative_rms_errors)
 costs = np.array(costs)
 nfevs = np.array(nfevs)
 success_flags = np.array(success_flags)
@@ -292,7 +285,6 @@ np.savez_compressed(
     results_save_path,
     intensity_rms_errors=intensity_rms_errors,
     coeff_rms_errors=coeff_rms_errors,
-    coeff_relative_rms_errors=coeff_relative_rms_errors,
     costs=costs,
     nfevs=nfevs,
     success_flags=success_flags,
@@ -314,7 +306,6 @@ summary = np.column_stack([
     np.arange(N_TEST),
     intensity_rms_errors,
     coeff_rms_errors,
-    coeff_relative_rms_errors,
     costs,
     nfevs,
     success_flags.astype(int),
@@ -324,7 +315,7 @@ np.savetxt(
     csv_save_path,
     summary,
     delimiter=",",
-    header="sample,intensity_rms,coeff_rms,coeff_relative_rms,cost,nfev,success",
+    header="sample,intensity_rms,coeff_rms,nfev,success",
     comments="",
 )
 
@@ -342,7 +333,6 @@ print("Mean intensity RMS:", np.mean(intensity_rms_errors))
 print("Median intensity RMS:", np.median(intensity_rms_errors))
 print("Mean coeff RMS:", np.mean(coeff_rms_errors))
 print("Median coeff RMS:", np.median(coeff_rms_errors))
-print("Mean coeff relative RMS:", np.mean(coeff_relative_rms_errors))
 print("Median coeff relative RMS:", np.median(coeff_relative_rms_errors))
 print("Success rate:", np.mean(success_flags))
 
