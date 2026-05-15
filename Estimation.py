@@ -160,7 +160,7 @@ def fit_lp_coeffs_to_target_intensity(
         intensity = np.abs(field_flat) ** 2
         intensity = intensity / (np.max(intensity) + 1e-12)
 
-        return intensity - target_flat
+        return  target_flat - intensity
 
     best_res = None
 
@@ -242,7 +242,7 @@ for i in range(N_TEST):
     )
 
     # Image/intensity RMS error
-    intensity_rms = np.sqrt(np.mean((intensity_fit - target_image) ** 2))
+    intensity_rms = np.sqrt(np.mean((target_image - intensity_fit) ** 2))
 
     # Align coefficients before comparing them
     coeff_fit_aligned = align_coeffs_to_true(coeff_fit, true_coeff)
@@ -261,7 +261,7 @@ for i in range(N_TEST):
     if i == 0:
         example_target = target_image
         example_fit = intensity_fit
-        example_residual = intensity_fit - target_image
+        example_residual =  target_image - intensity_fit 
 
 
 # --------------------------------------------------
