@@ -360,7 +360,7 @@ plt.tight_layout()
 
 plot_save_path = os.path.join(
     outdir,
-    f"LP_random_field_fit_example_same_modes{N_MODES}modes.png"
+    f"LP_random_field_fit_example{EXAMPLE_SAMPLE}_same_modes{N_MODES}modes.png"
 )
 
 plt.savefig(plot_save_path, dpi=300, bbox_inches="tight")
