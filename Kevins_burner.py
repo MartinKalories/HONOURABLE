@@ -9,9 +9,6 @@ from scipy.stats import gaussian_kde
 from scipy.integrate import trapezoid
 from scipy.optimize import differential_evolution
 
-from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
-
 
 # ==================================================
 # File path
@@ -481,127 +478,366 @@ def save_kde_results(samples, weights, labels, csv_path, kde5d_point=None, grids
 
 
 # ==================================================
-# Mixed-variable PCA
+# Helper for safe filenames
 # ==================================================
-def run_mixed_variable_pca(df, csv_path):
+def safe_filename(text):
+    return (
+        str(text)
+        .replace("(", "")
+        .replace(")", "")
+        .replace("/", "")
+        .replace("\\", "")
+        .replace(" ", "_")
+        .replace(":", "")
+    )
+
+
+# ==================================================
+# Encode discrete variables for 2D KDE
+# ==================================================
+def encode_discrete_variables(df, discrete_params):
     """
-    Builds a 2D PCA map using all variables:
-    - continuous variables
-    - discrete variables
-    - activation function
+    Converts discrete variables into numeric values so they can be used
+    in 2D KDE plots.
 
-    Discrete variables are one-hot encoded.
+    Numeric discrete variables like kernel sizes and filter counts are kept
+    as their actual values.
+
+    Non-numeric variables like actFunc are converted into category codes.
     """
 
-    df_mixed = df[["trial", loss_col] + all_params].copy()
+    encoded = pd.DataFrame(index=df.index)
+    tick_info = {}
 
-    # Log-transform large-scale continuous variables
-    X_continuous = df_mixed[continuous_params].copy()
-    X_continuous["learningRate"] = np.log10(X_continuous["learningRate"])
-    X_continuous["n_units_dense"] = np.log10(X_continuous["n_units_dense"])
+    for col in discrete_params:
+        numeric_values = pd.to_numeric(df[col], errors="coerce")
 
-    # Rename transformed columns for clarity
-    X_continuous = X_continuous.rename(
-        columns={
-            "learningRate": "log10_learningRate",
-            "n_units_dense": "log10_n_units_dense",
-        }
-    )
+        # If the whole column is numeric, keep the actual values
+        if numeric_values.notna().all():
+            encoded[col] = numeric_values.astype(float)
 
-    # One-hot encode discrete variables
-    # This is important because actFunc has no natural order.
-    X_discrete = pd.get_dummies(
-        df_mixed[discrete_params].astype(str),
-        prefix=discrete_params,
-        dtype=float,
-    )
+            unique_vals = np.sort(encoded[col].unique())
 
-    # Combine continuous and one-hot encoded variables
-    X_all = pd.concat([X_continuous, X_discrete], axis=1)
+            tick_info[col] = {
+                "ticks": unique_vals,
+                "labels": [
+                    str(int(v)) if float(v).is_integer() else f"{v:g}"
+                    for v in unique_vals
+                ],
+            }
 
-    # Scale before PCA so large-valued columns do not dominate
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X_all)
+        # Otherwise treat it as categorical
+        else:
+            categories = sorted(df[col].astype(str).unique())
+            category_to_code = {cat: i for i, cat in enumerate(categories)}
 
-    pca = PCA(n_components=2, random_state=42)
-    X_pca = pca.fit_transform(X_scaled)
+            encoded[col] = df[col].astype(str).map(category_to_code).astype(float)
 
-    pca_df = pd.DataFrame({
-        "trial": df_mixed["trial"].values,
-        "PC1": X_pca[:, 0],
-        "PC2": X_pca[:, 1],
-        loss_col: df_mixed[loss_col].values,
-    })
+            tick_info[col] = {
+                "ticks": np.arange(len(categories)),
+                "labels": categories,
+            }
 
-    # Add original variables back into the output CSV
-    for col in all_params:
-        pca_df[col] = df_mixed[col].values
-
-    # Save PCA coordinates
-    pca_output_path = csv_path.parent / f"MIXED_SPACE_PCA_{csv_path.name}"
-    pca_df.to_csv(pca_output_path, index=False)
-
-    # Save PCA loadings so you can interpret what PC1 and PC2 mean
-    loadings_df = pd.DataFrame(
-        pca.components_.T,
-        index=X_all.columns,
-        columns=["PC1_loading", "PC2_loading"],
-    )
-
-    loadings_df["abs_PC1_loading"] = loadings_df["PC1_loading"].abs()
-    loadings_df["abs_PC2_loading"] = loadings_df["PC2_loading"].abs()
-
-    loadings_output_path = csv_path.parent / f"MIXED_SPACE_PCA_LOADINGS_{csv_path.name}"
-    loadings_df.to_csv(loadings_output_path)
-
-    print("Mixed-variable PCA coordinates saved to:", pca_output_path)
-    print("Mixed-variable PCA loadings saved to:", loadings_output_path)
-
-    # Plot PCA space
-    plt.figure(figsize=(7, 6))
-
-    sc = plt.scatter(
-        pca_df["PC1"],
-        pca_df["PC2"],
-        c=pca_df[loss_col],
-        s=80,
-        alpha=0.85,
-        cmap="viridis_r",
-        edgecolor="black",
-        linewidth=0.4,
-    )
-
-    # Mark best trial
-    best_idx = pca_df[loss_col].idxmin()
-
-    plt.scatter(
-        pca_df.loc[best_idx, "PC1"],
-        pca_df.loc[best_idx, "PC2"],
-        s=220,
-        marker="*",
-        color="red",
-        edgecolor="black",
-        linewidth=1.0,
-        label="Best trial",
-        zorder=10,
-    )
-
-    plt.xlabel(f"PC1 ({pca.explained_variance_ratio_[0] * 100:.1f}% variance)")
-    plt.ylabel(f"PC2 ({pca.explained_variance_ratio_[1] * 100:.1f}% variance)")
-    plt.title("Mixed-variable optimisation space\ncontinuous + discrete variables")
-    plt.colorbar(sc, label="Objective validation loss")
-    plt.legend()
-    plt.tight_layout()
-
-    save_path = output_dir / "mixed_variable_pca_space.png"
-    plt.savefig(save_path, dpi=300)
-    plt.close()
-
-    print("Mixed-variable PCA plot saved to:", save_path)
-
-    return pca_df, loadings_df
+    return encoded, tick_info
 
 
+def add_discrete_jitter(values, rng, frac=0.035):
+    """
+    Adds small jitter to discrete scatter points so repeated trials
+    do not sit directly on top of each other.
+    """
+
+    values = np.asarray(values, dtype=float)
+    unique_vals = np.sort(np.unique(values))
+
+    if len(unique_vals) < 2:
+        return np.zeros_like(values)
+
+    min_step = np.min(np.diff(unique_vals))
+
+    return rng.normal(0, frac * min_step, size=len(values))
+
+
+def nearest_discrete_label(col, value, tick_info):
+    """
+    Converts a KDE peak coordinate back to the nearest real discrete value.
+    """
+
+    ticks = np.asarray(tick_info[col]["ticks"], dtype=float)
+    labels = tick_info[col]["labels"]
+
+    nearest_idx = np.argmin(np.abs(ticks - value))
+
+    return labels[nearest_idx]
+
+
+# ==================================================
+# 2D KDE plots for discrete variable pairs
+# ==================================================
+def plot_discrete_2d_kde_pairs(df, weights, csv_path, grids=200, levels=30):
+    """
+    Makes 2D KDE plots for every pair of discrete variables.
+
+    This replaces the mixed-variable PCA section.
+
+    Important:
+    The KDE is a smoothed density over discrete choices, so use it to see
+    which regions/categories the optimiser favoured, not as a strict
+    continuous physical relationship.
+    """
+
+    encoded, tick_info = encode_discrete_variables(df, discrete_params)
+
+    results = []
+    rng = np.random.default_rng(42)
+
+    for col_x, col_y in combinations(discrete_params, 2):
+        x = encoded[col_x].to_numpy(dtype=float)
+        y = encoded[col_y].to_numpy(dtype=float)
+
+        X, Y, Z = kde_2d(
+            x,
+            y,
+            weights,
+            grids=grids,
+        )
+
+        if Z is None:
+            print(f"Skipping discrete 2D KDE for {col_x} vs {col_y}: not enough variation.")
+
+            results.append({
+                "param_x": col_x,
+                "param_y": col_y,
+                "kde_peak_x_encoded": np.nan,
+                "kde_peak_y_encoded": np.nan,
+                "kde_peak_x_nearest_value": np.nan,
+                "kde_peak_y_nearest_value": np.nan,
+                "peak_density": np.nan,
+                "status": "skipped_not_enough_variation",
+            })
+
+            continue
+
+        # Find KDE peak
+        max_idx = np.unravel_index(np.argmax(Z), Z.shape)
+
+        peak_x = X[max_idx]
+        peak_y = Y[max_idx]
+        peak_density = Z[max_idx]
+
+        peak_x_label = nearest_discrete_label(col_x, peak_x, tick_info)
+        peak_y_label = nearest_discrete_label(col_y, peak_y, tick_info)
+
+        results.append({
+            "param_x": col_x,
+            "param_y": col_y,
+            "kde_peak_x_encoded": peak_x,
+            "kde_peak_y_encoded": peak_y,
+            "kde_peak_x_nearest_value": peak_x_label,
+            "kde_peak_y_nearest_value": peak_y_label,
+            "peak_density": peak_density,
+            "status": "ok",
+        })
+
+        # Add small jitter to show overlapping trials
+        x_jittered = x
+        y_jittered = y 
+
+        plt.figure(figsize=(7, 5.5))
+
+        cf = plt.contourf(
+            X,
+            Y,
+            Z,
+            levels=levels,
+            cmap="viridis",
+        )
+
+        plt.contour(
+            X,
+            Y,
+            Z,
+            levels=levels,
+            colors="black",
+            alpha=0.35,
+            linewidths=0.5,
+        )
+
+        # Scatter raw trials, coloured by objective loss
+        sc = plt.scatter(
+            x_jittered,
+            y_jittered,
+            c=df[loss_col],
+            s=55,
+            alpha=0.75,
+            cmap="viridis_r",
+            edgecolor="black",
+            linewidth=0.35,
+            label="Trials",
+        )
+
+        # Mark best actual trial
+        best_idx = df[loss_col].idxmin()
+
+        plt.scatter(
+            encoded.loc[best_idx, col_x],
+            encoded.loc[best_idx, col_y],
+            s=200,
+            marker="*",
+            color="red",
+            edgecolor="black",
+            linewidth=1.0,
+            label="Best trial",
+            zorder=11,
+        )
+
+        # Mark KDE peak
+        plt.scatter(
+            peak_x,
+            peak_y,
+            s=120,
+            marker="o",
+            color="black",
+            edgecolor="white",
+            linewidth=2,
+            label="2D KDE peak",
+            zorder=10,
+        )
+
+        plt.xticks(
+            tick_info[col_x]["ticks"],
+            tick_info[col_x]["labels"],
+            rotation=30,
+            ha="right",
+        )
+
+        plt.yticks(
+            tick_info[col_y]["ticks"],
+            tick_info[col_y]["labels"],
+        )
+
+        plt.xlabel(col_x)
+        plt.ylabel(col_y)
+        plt.title(f"Discrete 2D KDE: {col_x} vs {col_y}")
+
+        plt.colorbar(cf, label="Weighted KDE density")
+        plt.colorbar(sc, label="Objective validation loss")
+
+        plt.legend()
+        plt.tight_layout()
+
+        save_path = output_dir / f"discrete_2D_KDE_{safe_filename(col_x)}_vs_{safe_filename(col_y)}.png"
+        plt.savefig(save_path, dpi=300)
+        plt.close()
+
+        print(f"Saved discrete 2D KDE plot for {col_x} vs {col_y} to:", save_path)
+
+    results_df = pd.DataFrame(results)
+
+    output_path = csv_path.parent / f"DISCRETE_2D_KDE_{csv_path.name}"
+    results_df.to_csv(output_path, index=False)
+
+    print("Discrete 2D KDE results saved to:", output_path)
+
+    return results_df
+
+
+# ==================================================
+# Overlay kernel sizes onto the 1D KDE plots
+# ==================================================
+def plot_kernel_sizes_on_1d_kde(samples, weights, labels, df, csv_path, grids=400):
+    """
+    For each continuous 1D KDE plot, overlays trial points.
+
+    The x-axis is the continuous hyperparameter.
+    The y-position is the KDE density at that trial's x-value.
+    The colour shows the kernel size value.
+
+    This is done separately for:
+    - ksz_psf
+    - ksz_wf
+    """
+
+    kernel_cols = ["ksz_psf", "ksz_wf"]
+
+    rng = np.random.default_rng(42)
+
+    for kernel_col in kernel_cols:
+        kernel_values = pd.to_numeric(df[kernel_col], errors="coerce").to_numpy(dtype=float)
+
+        if np.isnan(kernel_values).all():
+            print(f"Skipping kernel overlay for {kernel_col}: values are not numeric.")
+            continue
+
+        for k in range(samples.shape[1]):
+            x = samples[:, k]
+
+            grid, pdf = kde_1d(
+                x,
+                weights,
+                grids=grids,
+            )
+
+            if grid is None:
+                print(f"Skipping kernel overlay for {labels[k]} coloured by {kernel_col}: not enough variation.")
+                continue
+
+            max_idx = np.argmax(pdf)
+            kde_peak = grid[max_idx]
+            peak_density = pdf[max_idx]
+
+            # Put each trial point on the KDE curve
+            y_on_curve = np.interp(x, grid, pdf)
+
+            # Tiny vertical jitter so repeated points are visible
+           
+            y_jittered = y_on_curve
+            plt.figure(figsize=(7, 4.8))
+
+            plt.plot(
+                grid,
+                pdf,
+                linewidth=2,
+                label="1D weighted KDE",
+            )
+
+            sc = plt.scatter(
+                x,
+                y_jittered,
+                c=kernel_values,
+                s=65,
+                alpha=0.85,
+                cmap="viridis",
+                edgecolor="black",
+                linewidth=0.35,
+                label=f"Trials coloured by {kernel_col}",
+                zorder=8,
+            )
+
+            plt.scatter(
+                kde_peak,
+                peak_density,
+                s=100,
+                color="black",
+                zorder=10,
+                label="1D KDE peak",
+            )
+
+            plt.xlabel(labels[k])
+            plt.ylabel("Marginal PDF")
+            plt.title(f"1D KDE: {labels[k]} coloured by {kernel_col}")
+
+            plt.colorbar(sc, label=kernel_col)
+            plt.legend()
+            plt.tight_layout()
+
+            filename = f"1D_KDE_{safe_filename(labels[k])}_coloured_by_{kernel_col}.png"
+            save_path = output_dir / filename
+
+            plt.savefig(save_path, dpi=300)
+            plt.close()
+
+            print(f"Saved 1D KDE kernel overlay plot for {labels[k]} coloured by {kernel_col} to:", save_path)
 # ==================================================
 # Discrete variable effect plots
 # ==================================================
@@ -656,8 +892,7 @@ def plot_discrete_variable_effects(df, csv_path):
         x_base = df[col].astype(str).map(pos_map).to_numpy(dtype=float)
 
         # Small jitter so individual trials are visible
-        jitter = rng.normal(0, 0.04, size=len(x_base))
-        x_jittered = x_base + jitter
+        x_jittered = x_base
 
         plt.figure(figsize=(7, 4.5))
 
@@ -836,27 +1071,35 @@ if __name__ == "__main__":
         kde5d_point=kde5d_point_for_2d,
     )
 
-    # ------------------------------
-    # New mixed-variable analysis
-    # ------------------------------
-    pca_df, loadings_df = run_mixed_variable_pca(
-        df=df,
-        csv_path=csv_path,
-    )
+   # ------------------------------
+# Discrete-variable 2D KDE analysis
+# ------------------------------
+discrete_2d_kde_df = plot_discrete_2d_kde_pairs(
+    df=df,
+    weights=weights,
+    csv_path=csv_path,
+)
 
-    discrete_summary_df = plot_discrete_variable_effects(
-        df=df,
-        csv_path=csv_path,
-    )
+# ------------------------------
+# Kernel-size overlays on 1D KDE plots
+# ------------------------------
+plot_kernel_sizes_on_1d_kde(
+    samples=samples,
+    weights=weights,
+    labels=continuous_labels,
+    df=df,
+    csv_path=csv_path,
+)
 
-    plot_continuous_variable_effects(
-        df=df,
-        csv_path=csv_path,
-    )
+# ------------------------------
+# Keep these useful effect plots
+# ------------------------------
+discrete_summary_df = plot_discrete_variable_effects(
+    df=df,
+    csv_path=csv_path,
+)
 
-    save_best_trial_summary(
-        df=df,
-        csv_path=csv_path,
-    )
-
-    print("\nAll analysis complete.")
+plot_continuous_variable_effects(
+    df=df,
+    csv_path=csv_path,
+)
