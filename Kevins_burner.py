@@ -182,7 +182,23 @@ def kde_2d(x, y, w, grids=200, bw_method=None):
 
     except np.linalg.LinAlgError:
         return X, Y, None
+        
+    def make_5d_continuous_optimum_dict(optimum_5d_transformed):
+    """
+    Converts the 5D KDE optimum into a dictionary with names matching
+    the continuous columns used inside make_all_kde_variables().
+    """
 
+        if optimum_5d_transformed is None:
+            return None
+
+        return {
+            "log10_learningRate": optimum_5d_transformed[0],
+            "dropout_rate": optimum_5d_transformed[1],
+            "dropout_rate_dense": optimum_5d_transformed[2],
+            "dropout_rate_psf": optimum_5d_transformed[3],
+            "log10_n_units_dense": optimum_5d_transformed[4],
+        }
 
 # ==================================================
 # Find continuous 5D KDE optimum
@@ -685,7 +701,14 @@ def nearest_axis_value(var_name, value, variable_info):
 # 2D KDE plots for all variable pairs
 # continuous-continuous, continuous-discrete, discrete-discrete
 # ==================================================
-def plot_all_2d_kde_pairs(df, weights, csv_path, grids=200, levels=30):
+def plot_all_2d_kde_pairs(
+    df,
+    weights,
+    csv_path,
+    kde5d_continuous_point=None,
+    grids=200,
+    levels=30,
+):
     """
     Makes 2D KDE plots for every pair of variables.
 
@@ -805,7 +828,25 @@ def plot_all_2d_kde_pairs(df, weights, csv_path, grids=200, levels=30):
             label="Best trial",
             zorder=11,
         )
-
+# 5D continuous KDE optimum projected onto this 2D plane
+# Only plotted when both axes are continuous variables.
+        if (
+            kde5d_continuous_point is not None
+            and variable_info[col_x]["type"] == "continuous"
+            and variable_info[col_y]["type"] == "continuous"
+            and col_x in kde5d_continuous_point
+            and col_y in kde5d_continuous_point
+        ):
+        plt.scatter(
+            kde5d_continuous_point[col_x],
+            kde5d_continuous_point[col_y],
+            s=120,
+            marker="x",
+            color="red",
+            linewidths=2.5,
+            label="5D KDE optimum",
+            zorder=12,
+        )
         # Smaller KDE peak marker
         plt.scatter(
             peak_x,
@@ -1197,7 +1238,9 @@ if __name__ == "__main__":
         csv_path=csv_path,
         T=T,
     )
-
+    kde5d_continuous_point = make_5d_continuous_optimum_dict(
+    optimum_5d_transformed
+    )
     # ------------------------------
     # 1D continuous KDE plots
     # ------------------------------
@@ -1216,9 +1259,10 @@ if __name__ == "__main__":
     # discrete vs discrete
     # ------------------------------
     all_2d_kde_df = plot_all_2d_kde_pairs(
-        df=df,
-        weights=weights,
-        csv_path=csv_path,
+    df=df,
+    weights=weights,
+    csv_path=csv_path,
+    kde5d_continuous_point=kde5d_continuous_point,
     )
 
     # ------------------------------
