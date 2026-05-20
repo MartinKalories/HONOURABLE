@@ -162,7 +162,7 @@ def fit_lp_coeffs_to_target_intensity(
         intensity = np.abs(field_flat) ** 2
         intensity = intensity / (np.max(intensity) + 1e-12)
 
-        return intensity - target_flat
+        return  target_flat- intensity
 
     best_res = None
 
@@ -226,7 +226,7 @@ for i in range(N_TEST):
         rng=rng,
     )
 
-    rms = np.sqrt(np.mean((intensity_fit - target_psf) ** 2))
+    rms = np.sqrt(np.mean((target_psf - intensity_fit) ** 2))
 
     rms_errors.append(rms)
     costs.append(res.cost)
@@ -241,7 +241,7 @@ for i in range(N_TEST):
     if i == 0:
         example_target = target_psf
         example_fit = intensity_fit
-        example_residual = intensity_fit - target_psf
+        example_residual =  target_psf - intensity_fit 
 
 
 # --------------------------------------------------
