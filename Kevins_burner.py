@@ -183,7 +183,7 @@ def kde_2d(x, y, w, grids=200, bw_method=None):
     except np.linalg.LinAlgError:
         return X, Y, None
         
-    def make_5d_continuous_optimum_dict(optimum_5d_transformed):
+ def make_5d_continuous_optimum_dict(optimum_5d_transformed):
     """
     Converts the 5D KDE optimum into a dictionary with names matching
     the continuous columns used inside make_all_kde_variables().
@@ -837,16 +837,16 @@ def plot_all_2d_kde_pairs(
             and col_x in kde5d_continuous_point
             and col_y in kde5d_continuous_point
         ):
-        plt.scatter(
-            kde5d_continuous_point[col_x],
-            kde5d_continuous_point[col_y],
-            s=120,
-            marker="x",
-            color="red",
-            linewidths=2.5,
-            label="5D KDE optimum",
-            zorder=12,
-        )
+            plt.scatter(
+                kde5d_continuous_point[col_x],
+                kde5d_continuous_point[col_y],
+                s=120,
+                marker="x",
+                color="red",
+                linewidths=2.5,
+                label="5D KDE optimum",
+                zorder=12,
+            )
         # Smaller KDE peak marker
         plt.scatter(
             peak_x,
