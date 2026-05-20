@@ -572,44 +572,162 @@ def nearest_discrete_label(col, value, tick_info):
 
 
 # ==================================================
-# 2D KDE plots for discrete variable pairs
+# Build all variables for 2D KDE: continuous + discrete
 # ==================================================
-def plot_discrete_2d_kde_pairs(df, weights, csv_path, grids=200, levels=30):
+def make_all_kde_variables(df):
     """
-    Makes 2D KDE plots for every pair of discrete variables.
+    Builds one combined dataframe for 2D KDE plots.
 
-    This replaces the mixed-variable PCA section.
+    Continuous variables:
+    - learningRate is converted to log10(learningRate)
+    - n_units_dense is converted to log10(n_units_dense)
 
-    Important:
-    The KDE is a smoothed density over discrete choices, so use it to see
-    which regions/categories the optimiser favoured, not as a strict
-    continuous physical relationship.
+    Discrete variables:
+    - numeric discrete variables keep their real values
+    - categorical variables like actFunc are encoded as 0, 1, 2...
     """
 
-    encoded, tick_info = encode_discrete_variables(df, discrete_params)
+    X = pd.DataFrame(index=df.index)
+    variable_info = {}
 
+    # ------------------------------
+    # Continuous variables
+    # ------------------------------
+    X["log10_learningRate"] = np.log10(df["learningRate"].astype(float))
+    variable_info["log10_learningRate"] = {
+        "label": "log10(learningRate)",
+        "type": "continuous",
+    }
+
+    X["dropout_rate"] = df["dropout_rate"].astype(float)
+    variable_info["dropout_rate"] = {
+        "label": "dropout_rate",
+        "type": "continuous",
+    }
+
+    X["dropout_rate_dense"] = df["dropout_rate_dense"].astype(float)
+    variable_info["dropout_rate_dense"] = {
+        "label": "dropout_rate_dense",
+        "type": "continuous",
+    }
+
+    X["dropout_rate_psf"] = df["dropout_rate_psf"].astype(float)
+    variable_info["dropout_rate_psf"] = {
+        "label": "dropout_rate_psf",
+        "type": "continuous",
+    }
+
+    X["log10_n_units_dense"] = np.log10(df["n_units_dense"].astype(float))
+    variable_info["log10_n_units_dense"] = {
+        "label": "log10(n_units_dense)",
+        "type": "continuous",
+    }
+
+    # ------------------------------
+    # Discrete variables
+    # ------------------------------
+    for col in discrete_params:
+        numeric_values = pd.to_numeric(df[col], errors="coerce")
+
+        # Numeric discrete variables, for example ksz_psf = 3, 5, 7
+        if numeric_values.notna().all():
+            X[col] = numeric_values.astype(float)
+
+            unique_vals = np.sort(X[col].unique())
+
+            variable_info[col] = {
+                "label": col,
+                "type": "discrete_numeric",
+                "ticks": unique_vals,
+                "ticklabels": [
+                    str(int(v)) if float(v).is_integer() else f"{v:g}"
+                    for v in unique_vals
+                ],
+            }
+
+        # Categorical discrete variables, for example actFunc
+        else:
+            categories = sorted(df[col].astype(str).unique())
+            category_to_code = {cat: i for i, cat in enumerate(categories)}
+
+            X[col] = df[col].astype(str).map(category_to_code).astype(float)
+
+            variable_info[col] = {
+                "label": col,
+                "type": "discrete_categorical",
+                "ticks": np.arange(len(categories)),
+                "ticklabels": categories,
+            }
+
+    return X, variable_info
+
+
+def nearest_axis_value(var_name, value, variable_info):
+    """
+    For discrete variables, converts a KDE peak coordinate back to the
+    nearest real category/value.
+    """
+
+    info = variable_info[var_name]
+
+    if info["type"] == "continuous":
+        return value
+
+    ticks = np.asarray(info["ticks"], dtype=float)
+    ticklabels = info["ticklabels"]
+
+    nearest_idx = np.argmin(np.abs(ticks - value))
+
+    return ticklabels[nearest_idx]
+
+
+# ==================================================
+# 2D KDE plots for all variable pairs
+# continuous-continuous, continuous-discrete, discrete-discrete
+# ==================================================
+def plot_all_2d_kde_pairs(df, weights, csv_path, grids=200, levels=30):
+    """
+    Makes 2D KDE plots for every pair of variables.
+
+    This replaces:
+    - plot_kde_pairs(...)
+    - save_kde_results(...)
+    - plot_discrete_2d_kde_pairs(...)
+
+    It includes mixed continuous/discrete projections.
+    """
+
+    X_all, variable_info = make_all_kde_variables(df)
+
+    columns = list(X_all.columns)
     results = []
-    rng = np.random.default_rng(42)
 
-    for col_x, col_y in combinations(discrete_params, 2):
-        x = encoded[col_x].to_numpy(dtype=float)
-        y = encoded[col_y].to_numpy(dtype=float)
+    best_idx = df[loss_col].idxmin()
 
-        X, Y, Z = kde_2d(
+    for col_x, col_y in combinations(columns, 2):
+        x = X_all[col_x].to_numpy(dtype=float)
+        y = X_all[col_y].to_numpy(dtype=float)
+
+        X_grid, Y_grid, Z = kde_2d(
             x,
             y,
             weights,
             grids=grids,
         )
 
+        x_label = variable_info[col_x]["label"]
+        y_label = variable_info[col_y]["label"]
+
         if Z is None:
-            print(f"Skipping discrete 2D KDE for {col_x} vs {col_y}: not enough variation.")
+            print(f"Skipping 2D KDE for {x_label} vs {y_label}: not enough variation.")
 
             results.append({
                 "param_x": col_x,
                 "param_y": col_y,
-                "kde_peak_x_encoded": np.nan,
-                "kde_peak_y_encoded": np.nan,
+                "param_x_label": x_label,
+                "param_y_label": y_label,
+                "kde_peak_x": np.nan,
+                "kde_peak_y": np.nan,
                 "kde_peak_x_nearest_value": np.nan,
                 "kde_peak_y_nearest_value": np.nan,
                 "peak_density": np.nan,
@@ -618,44 +736,42 @@ def plot_discrete_2d_kde_pairs(df, weights, csv_path, grids=200, levels=30):
 
             continue
 
-        # Find KDE peak
+        # KDE peak
         max_idx = np.unravel_index(np.argmax(Z), Z.shape)
 
-        peak_x = X[max_idx]
-        peak_y = Y[max_idx]
+        peak_x = X_grid[max_idx]
+        peak_y = Y_grid[max_idx]
         peak_density = Z[max_idx]
 
-        peak_x_label = nearest_discrete_label(col_x, peak_x, tick_info)
-        peak_y_label = nearest_discrete_label(col_y, peak_y, tick_info)
+        peak_x_nearest = nearest_axis_value(col_x, peak_x, variable_info)
+        peak_y_nearest = nearest_axis_value(col_y, peak_y, variable_info)
 
         results.append({
             "param_x": col_x,
             "param_y": col_y,
-            "kde_peak_x_encoded": peak_x,
-            "kde_peak_y_encoded": peak_y,
-            "kde_peak_x_nearest_value": peak_x_label,
-            "kde_peak_y_nearest_value": peak_y_label,
+            "param_x_label": x_label,
+            "param_y_label": y_label,
+            "kde_peak_x": peak_x,
+            "kde_peak_y": peak_y,
+            "kde_peak_x_nearest_value": peak_x_nearest,
+            "kde_peak_y_nearest_value": peak_y_nearest,
             "peak_density": peak_density,
             "status": "ok",
         })
 
-        # Add small jitter to show overlapping trials
-        x_jittered = x
-        y_jittered = y 
-
         plt.figure(figsize=(7, 5.5))
 
         cf = plt.contourf(
-            X,
-            Y,
+            X_grid,
+            Y_grid,
             Z,
             levels=levels,
             cmap="viridis",
         )
 
         plt.contour(
-            X,
-            Y,
+            X_grid,
+            Y_grid,
             Z,
             levels=levels,
             colors="black",
@@ -663,26 +779,25 @@ def plot_discrete_2d_kde_pairs(df, weights, csv_path, grids=200, levels=30):
             linewidths=0.5,
         )
 
-        # Scatter raw trials, coloured by objective loss
+        # Raw trials coloured by loss
         sc = plt.scatter(
-            x_jittered,
-            y_jittered,
+            x,
+            y,
             c=df[loss_col],
-            s=55,
+            s=45,
             alpha=0.75,
             cmap="viridis_r",
             edgecolor="black",
             linewidth=0.35,
             label="Trials",
+            zorder=8,
         )
 
-        # Mark best actual trial
-        best_idx = df[loss_col].idxmin()
-
+        # Best actual trial
         plt.scatter(
-            encoded.loc[best_idx, col_x],
-            encoded.loc[best_idx, col_y],
-            s=200,
+            X_all.loc[best_idx, col_x],
+            X_all.loc[best_idx, col_y],
+            s=160,
             marker="*",
             color="red",
             edgecolor="black",
@@ -691,34 +806,37 @@ def plot_discrete_2d_kde_pairs(df, weights, csv_path, grids=200, levels=30):
             zorder=11,
         )
 
-        # Mark KDE peak
+        # Smaller KDE peak marker
         plt.scatter(
             peak_x,
             peak_y,
-            s=120,
+            s=55,
             marker="o",
             color="black",
             edgecolor="white",
-            linewidth=2,
+            linewidth=1.0,
             label="2D KDE peak",
             zorder=10,
         )
 
-        plt.xticks(
-            tick_info[col_x]["ticks"],
-            tick_info[col_x]["labels"],
-            rotation=30,
-            ha="right",
-        )
+        plt.xlabel(x_label)
+        plt.ylabel(y_label)
+        plt.title(f"2D KDE: {x_label} vs {y_label}")
 
-        plt.yticks(
-            tick_info[col_y]["ticks"],
-            tick_info[col_y]["labels"],
-        )
+        # Proper ticks for discrete/categorical axes
+        if variable_info[col_x]["type"] != "continuous":
+            plt.xticks(
+                variable_info[col_x]["ticks"],
+                variable_info[col_x]["ticklabels"],
+                rotation=30,
+                ha="right",
+            )
 
-        plt.xlabel(col_x)
-        plt.ylabel(col_y)
-        plt.title(f"Discrete 2D KDE: {col_x} vs {col_y}")
+        if variable_info[col_y]["type"] != "continuous":
+            plt.yticks(
+                variable_info[col_y]["ticks"],
+                variable_info[col_y]["ticklabels"],
+            )
 
         plt.colorbar(cf, label="Weighted KDE density")
         plt.colorbar(sc, label="Objective validation loss")
@@ -726,32 +844,31 @@ def plot_discrete_2d_kde_pairs(df, weights, csv_path, grids=200, levels=30):
         plt.legend()
         plt.tight_layout()
 
-        save_path = output_dir / f"discrete_2D_KDE_{safe_filename(col_x)}_vs_{safe_filename(col_y)}.png"
+        save_path = output_dir / f"2D_KDE_{safe_filename(x_label)}_vs_{safe_filename(y_label)}.png"
+
         plt.savefig(save_path, dpi=300)
         plt.close()
 
-        print(f"Saved discrete 2D KDE plot for {col_x} vs {col_y} to:", save_path)
+        print(f"Saved 2D KDE plot for {x_label} vs {y_label} to:", save_path)
 
     results_df = pd.DataFrame(results)
 
-    output_path = csv_path.parent / f"DISCRETE_2D_KDE_{csv_path.name}"
+    output_path = csv_path.parent / f"KDE_2D_ALL_VARIABLES_{csv_path.name}"
     results_df.to_csv(output_path, index=False)
 
-    print("Discrete 2D KDE results saved to:", output_path)
+    print("All-variable 2D KDE results saved to:", output_path)
 
     return results_df
-
-
 # ==================================================
 # Overlay kernel sizes onto the 1D KDE plots
+# using fixed colours and a normal legend
 # ==================================================
 def plot_kernel_sizes_on_1d_kde(samples, weights, labels, df, csv_path, grids=400):
     """
     For each continuous 1D KDE plot, overlays trial points.
 
-    The x-axis is the continuous hyperparameter.
-    The y-position is the KDE density at that trial's x-value.
-    The colour shows the kernel size value.
+    The point colour is chosen by an if/elif style mapping, for example:
+    if ksz_psf == 3, colour purple.
 
     This is done separately for:
     - ksz_psf
@@ -760,7 +877,28 @@ def plot_kernel_sizes_on_1d_kde(samples, weights, labels, df, csv_path, grids=40
 
     kernel_cols = ["ksz_psf", "ksz_wf"]
 
-    rng = np.random.default_rng(42)
+    def kernel_colour(value):
+        """
+        Manual colour map for kernel sizes.
+        Change these colours if you want different ones.
+        """
+
+        value = int(value)
+
+        if value == 1:
+            return "tab:blue"
+        elif value == 3:
+            return "purple"
+        elif value == 5:
+            return "tab:green"
+        elif value == 7:
+            return "tab:orange"
+        elif value == 9:
+            return "tab:red"
+        elif value == 11:
+            return "tab:brown"
+        else:
+            return "black"
 
     for kernel_col in kernel_cols:
         kernel_values = pd.to_numeric(df[kernel_col], errors="coerce").to_numpy(dtype=float)
@@ -768,6 +906,8 @@ def plot_kernel_sizes_on_1d_kde(samples, weights, labels, df, csv_path, grids=40
         if np.isnan(kernel_values).all():
             print(f"Skipping kernel overlay for {kernel_col}: values are not numeric.")
             continue
+
+        unique_kernel_values = np.sort(np.unique(kernel_values[~np.isnan(kernel_values)]))
 
         for k in range(samples.shape[1]):
             x = samples[:, k]
@@ -789,55 +929,67 @@ def plot_kernel_sizes_on_1d_kde(samples, weights, labels, df, csv_path, grids=40
             # Put each trial point on the KDE curve
             y_on_curve = np.interp(x, grid, pdf)
 
-            # Tiny vertical jitter so repeated points are visible
-           
-            y_jittered = y_on_curve
             plt.figure(figsize=(7, 4.8))
 
             plt.plot(
                 grid,
                 pdf,
                 linewidth=2,
+                color="black",
                 label="1D weighted KDE",
             )
 
-            sc = plt.scatter(
-                x,
-                y_jittered,
-                c=kernel_values,
-                s=65,
-                alpha=0.85,
-                cmap="viridis",
-                edgecolor="black",
-                linewidth=0.35,
-                label=f"Trials coloured by {kernel_col}",
-                zorder=8,
-            )
+            # Plot each kernel size separately so the legend is clear
+            for kernel_value in unique_kernel_values:
+                mask = kernel_values == kernel_value
 
+                if not np.any(mask):
+                    continue
+
+                kernel_label = (
+                    str(int(kernel_value))
+                    if float(kernel_value).is_integer()
+                    else f"{kernel_value:g}"
+                )
+
+                plt.scatter(
+                    x[mask],
+                    y_on_curve[mask],
+                    s=55,
+                    alpha=0.85,
+                    color=kernel_colour(kernel_value),
+                    edgecolor="black",
+                    linewidth=0.35,
+                    label=f"{kernel_col} = {kernel_label}",
+                    zorder=8,
+                )
+
+            # Smaller 1D KDE peak marker
             plt.scatter(
                 kde_peak,
                 peak_density,
-                s=100,
+                s=35,
                 color="black",
+                edgecolor="white",
+                linewidth=0.8,
                 zorder=10,
                 label="1D KDE peak",
             )
 
             plt.xlabel(labels[k])
             plt.ylabel("Marginal PDF")
-            plt.title(f"1D KDE: {labels[k]} coloured by {kernel_col}")
+            plt.title(f"1D KDE: {labels[k]} grouped by {kernel_col}")
 
-            plt.colorbar(sc, label=kernel_col)
             plt.legend()
             plt.tight_layout()
 
-            filename = f"1D_KDE_{safe_filename(labels[k])}_coloured_by_{kernel_col}.png"
+            filename = f"1D_KDE_{safe_filename(labels[k])}_grouped_by_{kernel_col}.png"
             save_path = output_dir / filename
 
             plt.savefig(save_path, dpi=300)
             plt.close()
 
-            print(f"Saved 1D KDE kernel overlay plot for {labels[k]} coloured by {kernel_col} to:", save_path)
+            print(f"Saved 1D KDE kernel grouped plot for {labels[k]} by {kernel_col} to:", save_path)
 # ==================================================
 # Discrete variable effect plots
 # ==================================================
@@ -1037,7 +1189,7 @@ def save_best_trial_summary(df, csv_path):
 if __name__ == "__main__":
 
     # ------------------------------
-    # Original continuous KDE section
+    # Continuous 5D KDE optimum
     # ------------------------------
     optimum_5d_transformed, optimum_5d_physical = find_5d_kde_optimum(
         df=df,
@@ -1046,8 +1198,9 @@ if __name__ == "__main__":
         T=T,
     )
 
-    kde5d_point_for_2d = make_5d_point_for_2d_plots(optimum_5d_transformed)
-
+    # ------------------------------
+    # 1D continuous KDE plots
+    # ------------------------------
     plot_kde_1d(
         samples=samples,
         weights=weights,
@@ -1055,51 +1208,53 @@ if __name__ == "__main__":
         csv_path=csv_path,
     )
 
-    plot_kde_pairs(
+    # ------------------------------
+    # All 2D KDE projections
+    # Includes:
+    # continuous vs continuous
+    # continuous vs discrete
+    # discrete vs discrete
+    # ------------------------------
+    all_2d_kde_df = plot_all_2d_kde_pairs(
+        df=df,
+        weights=weights,
+        csv_path=csv_path,
+    )
+
+    # ------------------------------
+    # 1D KDE plots grouped by kernel size
+    # Uses legend colours instead of colour bar
+    # ------------------------------
+    plot_kernel_sizes_on_1d_kde(
         samples=samples,
         weights=weights,
         labels=continuous_labels,
+        df=df,
         csv_path=csv_path,
-        kde5d_point=kde5d_point_for_2d,
     )
 
-    save_kde_results(
-        samples=samples,
-        weights=weights,
-        labels=continuous_labels,
+    # ------------------------------
+    # Discrete variable effect plots
+    # ------------------------------
+    discrete_summary_df = plot_discrete_variable_effects(
+        df=df,
         csv_path=csv_path,
-        kde5d_point=kde5d_point_for_2d,
     )
 
-   # ------------------------------
-# Discrete-variable 2D KDE analysis
-# ------------------------------
-discrete_2d_kde_df = plot_discrete_2d_kde_pairs(
-    df=df,
-    weights=weights,
-    csv_path=csv_path,
-)
+    # ------------------------------
+    # Continuous variable effect scatter plots
+    # ------------------------------
+    plot_continuous_variable_effects(
+        df=df,
+        csv_path=csv_path,
+    )
 
-# ------------------------------
-# Kernel-size overlays on 1D KDE plots
-# ------------------------------
-plot_kernel_sizes_on_1d_kde(
-    samples=samples,
-    weights=weights,
-    labels=continuous_labels,
-    df=df,
-    csv_path=csv_path,
-)
+    # ------------------------------
+    # Best trial summary
+    # ------------------------------
+    save_best_trial_summary(
+        df=df,
+        csv_path=csv_path,
+    )
 
-# ------------------------------
-# Keep these useful effect plots
-# ------------------------------
-discrete_summary_df = plot_discrete_variable_effects(
-    df=df,
-    csv_path=csv_path,
-)
-
-plot_continuous_variable_effects(
-    df=df,
-    csv_path=csv_path,
-)
+    print("\nAll analysis complete.")
