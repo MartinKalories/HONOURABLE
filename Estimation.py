@@ -28,7 +28,7 @@ N_RANDOM_FIELDS = 100
 
 # Number of generated fields to test by fitting back
 N_TEST = 100
-
+EXAMPLE_SAMPLE = 9
 # Least-squares settings
 MAX_NFEV = 1000
 N_RESTARTS = 2
@@ -285,7 +285,7 @@ for i in range(N_TEST):
         example_target = target_image
         example_fit = intensity_fit
         example_residual = target_image - intensity_fit
-    EXAMPLE_SAMPLE = 10
+    
 
     if i == EXAMPLE_SAMPLE - 1:
         example_target = target_image
