@@ -121,6 +121,10 @@ intensities = np.abs(fields_true) ** 2
 max_vals = np.max(intensities, axis=(1, 2), keepdims=True)
 intensities = intensities / (max_vals + 1e-12)
 
+# Normalise the TRUE complex fields in the same way.
+# This makes |fields_true_normalised|^2 exactly match the normalised target intensity.
+fields_true_normalised = fields_true / np.sqrt(max_vals + 1e-12)
+
 print("Generated intensity dataset shape:", intensities.shape)
 # --------------------------------------------------
 # Step 3: Save the generated dataset
@@ -241,18 +245,99 @@ def align_coeffs_to_true(coeffs_fit, coeffs_true):
 
 
 # --------------------------------------------------
+# Complex-field comparison helpers
+# --------------------------------------------------
+def normalise_complex_field_to_unit_intensity(field):
+    """
+    Scale a complex field so that max(|E|^2) = 1.
+
+    This is needed because the intensity fitting function returns a raw
+    complex field, while the plotted intensity is normalised to max = 1.
+    """
+    max_intensity = np.max(np.abs(field) ** 2)
+    return field / (np.sqrt(max_intensity) + 1e-12)
+
+
+def align_field_global_phase(reference_field, field_to_align, amp_threshold=0.03):
+    """
+    Align the fitted field to the target field by one global phase factor.
+
+    Intensity fitting only sees |E|^2, so it cannot determine the absolute
+    global phase of E. Without this alignment, |E_target - E_fit| can look
+    artificially large even when the intensity fit is good.
+
+    The mask avoids using near-zero-amplitude pixels where phase is noisy.
+    """
+    ref_flat = reference_field.reshape(-1)
+    fit_flat = field_to_align.reshape(-1)
+
+    ref_amp = np.abs(ref_flat)
+    fit_amp = np.abs(fit_flat)
+
+    mask = (
+        (ref_amp > amp_threshold * np.max(ref_amp)) &
+        (fit_amp > amp_threshold * np.max(fit_amp))
+    )
+
+    if np.sum(mask) < 10:
+        mask = np.ones_like(ref_amp, dtype=bool)
+
+    overlap = np.vdot(fit_flat[mask], ref_flat[mask])
+
+    if np.abs(overlap) < 1e-12:
+        return field_to_align, 1.0 + 0.0j
+
+    phase_factor = overlap / np.abs(overlap)
+
+    return phase_factor * field_to_align, phase_factor
+
+
+def masked_phase_for_plot(field, intensity=None, threshold=0.02):
+    """
+    Return phase with low-intensity pixels masked.
+
+    Phase is not physically meaningful where the field amplitude is close to zero.
+    """
+    phase = np.angle(field)
+
+    if intensity is None:
+        intensity = np.abs(field) ** 2
+
+    mask = intensity < threshold * np.max(intensity)
+
+    return np.ma.array(phase, mask=mask)
+
+
+def wrapped_phase_difference(phase_a, phase_b):
+    """
+    Wrapped phase difference in the range [-pi, pi].
+    """
+    return np.angle(np.exp(1j * (phase_a - phase_b)))
+
+
+# --------------------------------------------------
 # Step 4: Test fitting / reconstruct each generated field
 # --------------------------------------------------
 N_TEST = min(N_TEST, N_RANDOM_FIELDS)
 
 intensity_rms_errors = []
+complex_field_rms_errors = []
+relative_complex_field_rms_errors = []
 costs = []
 nfevs = []
 success_flags = []
+global_phase_factors = []
 
 example_target = None
 example_fit = None
 example_residual = None
+
+example_target_field = None
+example_fit_field = None
+example_complex_residual_abs = None
+example_target_phase = None
+example_fit_phase = None
+example_phase_residual = None
 
 for i in range(N_TEST):
     print(f"\nFitting sample {i + 1}/{N_TEST}")
@@ -270,6 +355,32 @@ for i in range(N_TEST):
     # Image/intensity RMS error
     intensity_rms = np.sqrt(np.mean((intensity_fit - target_image) ** 2))
 
+    # --------------------------------------------------
+    # Complex-field diagnostic comparison
+    # --------------------------------------------------
+    # The target complex field is known here because we generated the target.
+    # It is normalised so that |E_target|^2 matches the normalised target intensity.
+    target_field = fields_true_normalised[i]
+
+    # The fit was found by matching intensity only, but it still gives a complex field.
+    # Normalise it so that |E_fit|^2 matches the plotted fitted intensity.
+    fit_field_norm = normalise_complex_field_to_unit_intensity(field_fit)
+
+    # Align only the global phase before plotting/comparing complex fields.
+    # This removes the arbitrary phase offset caused by intensity-only fitting.
+    fit_field_aligned, global_phase_factor = align_field_global_phase(
+        target_field,
+        fit_field_norm,
+    )
+
+    complex_residual = target_field - fit_field_aligned
+
+    complex_field_rms = np.sqrt(np.mean(np.abs(complex_residual) ** 2))
+    relative_complex_field_rms = (
+        complex_field_rms
+        / (np.sqrt(np.mean(np.abs(target_field) ** 2)) + 1e-12)
+    )
+
     # Align coefficients before comparing them
    # coeff_fit_aligned = align_coeffs_to_true(coeff_fit, true_coeff)
 
@@ -281,6 +392,9 @@ for i in range(N_TEST):
    # )
 
     intensity_rms_errors.append(intensity_rms)
+    complex_field_rms_errors.append(complex_field_rms)
+    relative_complex_field_rms_errors.append(relative_complex_field_rms)
+    global_phase_factors.append(global_phase_factor)
     #coeff_rms_errors.append(coeff_rms)
     #coeff_relative_rms_errors.append(coeff_relative_rms)
     costs.append(res.cost)
@@ -288,6 +402,8 @@ for i in range(N_TEST):
     success_flags.append(res.success)
 
     print("Intensity RMS:", intensity_rms)
+    print("Complex field RMS after global phase alignment:", complex_field_rms)
+    print("Relative complex field RMS after global phase alignment:", relative_complex_field_rms)
     #print("Coeff RMS:", coeff_rms)
     #print("Coeff relative RMS:", coeff_relative_rms)
     print("Optimiser success:", res.success)
@@ -297,14 +413,43 @@ for i in range(N_TEST):
         example_fit = intensity_fit
         example_residual = intensity_fit - target_image
 
+        example_target_field = target_field
+        example_fit_field = fit_field_aligned
+        example_complex_residual_abs = np.abs(complex_residual)
+
+        example_target_phase = masked_phase_for_plot(
+            example_target_field,
+            intensity=example_target,
+        )
+
+        example_fit_phase = masked_phase_for_plot(
+            example_fit_field,
+            intensity=example_fit,
+        )
+
+        phase_residual = wrapped_phase_difference(
+            np.angle(example_target_field),
+            np.angle(example_fit_field),
+        )
+
+        phase_mask = (
+            (example_target < 0.02 * np.max(example_target)) |
+            (example_fit < 0.02 * np.max(example_fit))
+        )
+
+        example_phase_residual = np.ma.array(phase_residual, mask=phase_mask)
+
 
 # --------------------------------------------------
 # Step 5: Save test results
 # --------------------------------------------------
 intensity_rms_errors = np.array(intensity_rms_errors)
+complex_field_rms_errors = np.array(complex_field_rms_errors)
+relative_complex_field_rms_errors = np.array(relative_complex_field_rms_errors)
 costs = np.array(costs)
 nfevs = np.array(nfevs)
 success_flags = np.array(success_flags)
+global_phase_factors = np.array(global_phase_factors)
 
 results_save_path = os.path.join(
     outdir,
@@ -314,9 +459,12 @@ results_save_path = os.path.join(
 np.savez_compressed(
     results_save_path,
     intensity_rms_errors=intensity_rms_errors,
+    complex_field_rms_errors=complex_field_rms_errors,
+    relative_complex_field_rms_errors=relative_complex_field_rms_errors,
     costs=costs,
     nfevs=nfevs,
     success_flags=success_flags,
+    global_phase_factors=global_phase_factors,
 )
 
 print("\nSaved fit results to:")
@@ -333,6 +481,8 @@ csv_save_path = os.path.join(
 summary = np.column_stack([
     np.arange(N_TEST),
     intensity_rms_errors,
+    complex_field_rms_errors,
+    relative_complex_field_rms_errors,
     costs,
     nfevs,
     success_flags.astype(int),
@@ -342,7 +492,7 @@ np.savetxt(
     csv_save_path,
     summary,
     delimiter=",",
-    header="sample,intensity_rms,cost,nfev,success",
+    header="sample,intensity_rms,complex_field_rms,relative_complex_field_rms,cost,nfev,success",
     comments="",
 )
 
@@ -356,6 +506,10 @@ print("Overall fitting results")
 print("==============================")
 print("Mean intensity RMS:", np.mean(intensity_rms_errors))
 print("Median intensity RMS:", np.median(intensity_rms_errors))
+print("Mean complex field RMS:", np.mean(complex_field_rms_errors))
+print("Median complex field RMS:", np.median(complex_field_rms_errors))
+print("Mean relative complex field RMS:", np.mean(relative_complex_field_rms_errors))
+print("Median relative complex field RMS:", np.median(relative_complex_field_rms_errors))
 #print("Mean coeff RMS:", np.mean(coeff_rms_errors))
 #print("Median coeff RMS:", np.median(coeff_rms_errors))
 #print("Mean coeff relative RMS:", np.mean(coeff_relative_rms_errors))
@@ -364,35 +518,118 @@ print("Success rate:", np.mean(success_flags))
 
 
 # --------------------------------------------------
-# Plot one example reconstruction
+# Plot intensity diagnostics only
 # --------------------------------------------------
 plt.figure(figsize=(12, 4))
 
 plt.subplot(1, 3, 1)
-plt.imshow(example_target, cmap="inferno")
-plt.title("Generated target")
+plt.imshow(example_target, cmap="inferno", vmin=0, vmax=1)
+plt.title(r"Target intensity $|E_\mathrm{target}|^2$")
 plt.colorbar()
 
 plt.subplot(1, 3, 2)
-plt.imshow(example_fit, cmap="inferno")
-plt.title("LP least-squares fit")
+plt.imshow(example_fit, cmap="inferno", vmin=0, vmax=1)
+plt.title(r"Fitted intensity $|E_\mathrm{fit}|^2$")
 plt.colorbar()
 
 plt.subplot(1, 3, 3)
 plt.imshow(example_residual, cmap="bwr")
-plt.title("Residual")
+plt.title(r"Intensity residual $I_\mathrm{fit} - I_\mathrm{target}$")
 plt.colorbar()
 
 plt.tight_layout()
 
-plot_save_path = os.path.join(
+intensity_plot_save_path = os.path.join(
     outdir,
-    f"LP_random_field_fit_example_{N_MODES_FIT}modes.png"
+    f"LP_random_field_intensity_example_gen{N_MODES_GENERATE}_fit{N_MODES_FIT}modes.png"
 )
 
-plt.savefig(plot_save_path, dpi=300, bbox_inches="tight")
+plt.savefig(intensity_plot_save_path, dpi=300, bbox_inches="tight")
 
-print("Saved example plot to:")
-print(plot_save_path)
+print("Saved intensity example plot to:")
+print(intensity_plot_save_path)
 
 plt.show()
+
+
+# --------------------------------------------------
+# Plot phase diagnostics only
+# --------------------------------------------------
+plt.figure(figsize=(12, 4))
+
+plt.subplot(1, 3, 1)
+plt.imshow(example_target_phase, cmap="twilight", vmin=-np.pi, vmax=np.pi)
+plt.title(r"Target phase $\arg(E_\mathrm{target})$")
+plt.colorbar(label="phase [rad]")
+
+plt.subplot(1, 3, 2)
+plt.imshow(example_fit_phase, cmap="twilight", vmin=-np.pi, vmax=np.pi)
+plt.title(r"Fit phase $\arg(E_\mathrm{fit})$ aligned")
+plt.colorbar(label="phase [rad]")
+
+plt.subplot(1, 3, 3)
+plt.imshow(example_phase_residual, cmap="twilight", vmin=-np.pi, vmax=np.pi)
+plt.title(r"Wrapped phase residual")
+plt.colorbar(label="phase difference [rad]")
+
+plt.tight_layout()
+
+phase_plot_save_path = os.path.join(
+    outdir,
+    f"LP_random_field_phase_example_gen{N_MODES_GENERATE}_fit{N_MODES_FIT}modes.png"
+)
+
+plt.savefig(phase_plot_save_path, dpi=300, bbox_inches="tight")
+
+print("Saved phase example plot to:")
+print(phase_plot_save_path)
+
+plt.show()
+
+
+# --------------------------------------------------
+# Plot complex-field residual magnitude separately
+# --------------------------------------------------
+plt.figure(figsize=(5, 4))
+
+plt.imshow(example_complex_residual_abs, cmap="inferno")
+plt.title(r"Complex residual magnitude $|E_\mathrm{target} - E_\mathrm{fit}|$")
+plt.colorbar()
+
+plt.tight_layout()
+
+complex_residual_plot_save_path = os.path.join(
+    outdir,
+    f"LP_random_field_complex_residual_example_gen{N_MODES_GENERATE}_fit{N_MODES_FIT}modes.png"
+)
+
+plt.savefig(complex_residual_plot_save_path, dpi=300, bbox_inches="tight")
+
+print("Saved complex residual magnitude plot to:")
+print(complex_residual_plot_save_path)
+
+plt.show()
+
+
+# --------------------------------------------------
+# Optional: save the exact complex arrays used in the example plot
+# --------------------------------------------------
+example_complex_save_path = os.path.join(
+    outdir,
+    f"LP_random_field_complex_example_arrays_gen{N_MODES_GENERATE}_fit{N_MODES_FIT}modes.npz"
+)
+
+np.savez_compressed(
+    example_complex_save_path,
+    E_target_real=example_target_field.real,
+    E_target_imag=example_target_field.imag,
+    E_fit_real=example_fit_field.real,
+    E_fit_imag=example_fit_field.imag,
+    abs_Etarget_minus_Efit=example_complex_residual_abs,
+    phase_target=np.angle(example_target_field),
+    phase_fit=np.angle(example_fit_field),
+    phase_residual=example_phase_residual,
+)
+
+print("Saved example complex arrays to:")
+print(example_complex_save_path)
