@@ -243,19 +243,20 @@ for i in range(N_TEST):
     )
 
     # Image/intensity RMS error
-    # Image/intensity RMS error
     intensity_rms = np.sqrt(np.mean((target_image - intensity_fit) ** 2))
 
-# Align coefficients before comparing them
+    # Align coefficients before comparing them
     coeff_fit_aligned = align_coeffs_to_true(coeff_fit, true_coeff)
 
-    coeff_rms = np.sqrt(np.mean(np.abs(true_coeff - coeff_fit_aligned ) ** 2))
+    coeff_rms = np.sqrt(
+        np.mean(np.abs(true_coeff - coeff_fit_aligned) ** 2)
+    )
 
-# Complex field RMS error
+    # Complex field RMS error
     target_field = fields[i]
 
     field_fit_aligned_flat = mode_matrix @ coeff_fit_aligned
-field_fit_aligned = field_fit_aligned_flat.reshape(ny, nx)
+    field_fit_aligned = field_fit_aligned_flat.reshape(ny, nx)
 
     complex_field_rms = np.sqrt(
         np.mean(np.abs(target_field - field_fit_aligned) ** 2)
@@ -275,10 +276,15 @@ field_fit_aligned = field_fit_aligned_flat.reshape(ny, nx)
     success_flags.append(res.success)
 
     print("Intensity RMS:", intensity_rms)
-    
+    print("Coeff RMS:", coeff_rms)
     print("Complex field RMS:", complex_field_rms)
     print("Relative complex field RMS:", relative_complex_field_rms)
     print("Optimiser success:", res.success)
+
+    if i == EXAMPLE_SAMPLE - 1:
+        example_target = target_image
+        example_fit = intensity_fit
+        example_residual = target_image - intensity_fit
     EXAMPLE_SAMPLE = 10
 
     if i == EXAMPLE_SAMPLE - 1:
@@ -327,7 +333,7 @@ summary = np.column_stack([
     np.arange(N_TEST),
     intensity_rms_errors,
     complex_field_rms_errors,
-    relative_complex_field_rms_errors
+    relative_complex_field_rms_errors,
     costs,
     nfevs,
     success_flags.astype(int),
@@ -353,10 +359,10 @@ print("Overall fitting results")
 print("==============================")
 print("Mean intensity RMS:", np.mean(intensity_rms_errors))
 print("Median intensity RMS:", np.median(intensity_rms_errors))
-print("Mean coeff RMS:", np.mean(complex_field_rms_errors))
-print("Median coeff RMS:", np.median(complex_field_rms_errors))
-print("Mean coeff RMS:", np.mean(relative_complex_field_rms_errors))
-print("Median coeff RMS:", np.median(relative_complex_field_rms_errors))
+print("Mean complex field RMS:", np.mean(complex_field_rms_errors))
+print("Median complex field RMS:", np.median(complex_field_rms_errors))
+print("Mean relative complex field RMS:", np.mean(relative_complex_field_rms_errors))
+print("Median relative complex field RMS:", np.median(relative_complex_field_rms_errors))
 print("Success rate:", np.mean(success_flags))
 
 
