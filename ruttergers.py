@@ -208,7 +208,7 @@ ax.set_title(
     fontweight="bold"
 )
 
-OUTFILE = os.path.join(outdir, "fourier_lp_modes_grid.png")
+OUTFILE = os.path.join(outdir, "fourier_lp_modes_grid_phase.png")
 
 # later, after plotting:
 plt.tight_layout()
