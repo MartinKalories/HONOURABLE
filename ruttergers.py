@@ -5,6 +5,7 @@ Fourier transform and display LP modes from example_fiber_modes.py style code.
 from lanternfiber import lanternfiber
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
 datadir = "/home/manav//PL-NN-testdata_forDec2025/"
 outdir = datadir
@@ -210,5 +211,9 @@ ax.set_title(
 plt.tight_layout()
 plt.savefig(OUTFILE, dpi=300)
 plt.show()
+phase_plot_save_path = os.path.join(
+    outdir,
+    f"LP_random_field_phase_example_gen{N_MODES_GENERATE}_fit{N_MODES_FIT}modes.png"
+)
 
 print(f"Saved figure to: {OUTFILE}")
