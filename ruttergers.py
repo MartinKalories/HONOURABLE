@@ -30,8 +30,7 @@ NPIX = 256
 MAX_R = 2
 
 CELL_SIZE = 0.75
-FFT_CROP_FRAC = 0.45
-
+FFT_CROP_FRAC = 0.10
 DISPLAY = "real"
 # Options:
 # "real"      -> red/blue Fourier field, closest to your example image
