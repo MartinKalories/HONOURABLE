@@ -23,8 +23,8 @@ core_radius = 32.8 / 2  # microns
 show_plots = False
 
 # Plot settings
-MAX_L = 20
-MAX_M = 8
+MAX_L = 6
+MAX_M = 4
 
 NPIX = 256
 MAX_R = 2
