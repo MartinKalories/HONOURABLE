@@ -36,7 +36,7 @@ N_TEST = 100
 MAX_NFEV = 1000
 N_RESTARTS = 2
 
-RNG_SEED = 42
+RNG_SEED = 41
 rng = np.random.default_rng(RNG_SEED)
 
 
