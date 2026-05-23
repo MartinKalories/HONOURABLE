@@ -6,7 +6,9 @@ from lanternfiber import lanternfiber
 import numpy as np
 import matplotlib.pyplot as plt
 
-
+datadir = "/home/manav//PL-NN-testdata_forDec2025/"
+outdir = datadir
+os.makedirs(outdir, exist_ok=True)
 # ============================================================
 # Fibre parameters from example_fiber_modes.py
 # ============================================================
