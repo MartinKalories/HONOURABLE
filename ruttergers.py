@@ -10,6 +10,7 @@ import os
 datadir = "/home/manav//PL-NN-testdata_forDec2025/"
 outdir = datadir
 os.makedirs(outdir, exist_ok=True)
+
 # ============================================================
 # Fibre parameters from example_fiber_modes.py
 # ============================================================
@@ -208,12 +209,11 @@ ax.set_title(
     fontweight="bold"
 )
 
+OUTFILE = os.path.join(outdir, "fourier_lp_modes_grid.png")
+
+# later, after plotting:
 plt.tight_layout()
-plt.savefig(OUTFILE, dpi=300)
+plt.savefig(OUTFILE, dpi=300, bbox_inches="tight")
 plt.show()
-phase_plot_save_path = os.path.join(
-    outdir,
-    f"ruttegers attempt.png"
-)
 
 print(f"Saved figure to: {OUTFILE}")
