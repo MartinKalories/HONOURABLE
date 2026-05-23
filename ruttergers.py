@@ -1,5 +1,6 @@
 """
 Fourier transform and display LP modes from example_fiber_modes.py style code.
+Blue/red display using phase-corrected signed Fourier amplitude.
 """
 
 from lanternfiber import lanternfiber
@@ -10,6 +11,8 @@ import os
 datadir = "/home/manav//PL-NN-testdata_forDec2025/"
 outdir = datadir
 os.makedirs(outdir, exist_ok=True)
+
+OUTFILE = os.path.join(outdir, "fourier_lp_modes_grid_signed.png")
 
 # ============================================================
 # Fibre parameters from example_fiber_modes.py
@@ -23,22 +26,21 @@ core_radius = 32.8 / 2  # microns
 show_plots = False
 
 # Plot settings
-MAX_L = 6
-MAX_M = 4
+MAX_L = 20
+MAX_M = 8
 
 NPIX = 256
 MAX_R = 2
 
 CELL_SIZE = 0.75
 FFT_CROP_FRAC = 0.10
-DISPLAY = "abs"
-# Options:
-# "real"      -> red/blue Fourier field, closest to your example image
-# "abs"       -> Fourier amplitude
-# "intensity" -> Fourier intensity
-# "phase"     -> Fourier phase
 
-OUTFILE = "fourier_lp_modes_grid.png"
+# Options:
+# "signed_abs" -> recommended blue/red Fourier display
+# "abs"        -> Fourier amplitude
+# "intensity"  -> Fourier intensity
+# "phase"      -> Fourier phase
+DISPLAY = "signed_abs"
 
 
 # ============================================================
@@ -83,25 +85,30 @@ def make_display_image(F, display):
     """
     Convert complex Fourier field into a plottable image.
     """
-    if display == "real":
-        img = np.real(F)
-        vmax = np.max(np.abs(img))
+    if display == "signed_abs":
+        # Keep the visible Fourier shape from |F|,
+        # but color lobes using sign of the real part
+        img = np.abs(F) * np.sign(np.real(F))
+        vmax = np.percentile(np.abs(img), 99.5)
         if vmax > 0:
             img = img / vmax
+        img = np.clip(img, -1, 1)
         return img, "bwr", -1, 1
 
     elif display == "abs":
         img = np.abs(F)
-        vmax = np.max(img)
+        vmax = np.percentile(img, 99.5)
         if vmax > 0:
             img = img / vmax
+        img = np.clip(img, 0, 1)
         return img, "inferno", 0, 1
 
     elif display == "intensity":
         img = np.abs(F) ** 2
-        vmax = np.max(img)
+        vmax = np.percentile(img, 99.5)
         if vmax > 0:
             img = img / vmax
+        img = np.clip(img, 0, 1)
         return img, "inferno", 0, 1
 
     elif display == "phase":
@@ -109,7 +116,7 @@ def make_display_image(F, display):
         return img, "twilight", -np.pi, np.pi
 
     else:
-        raise ValueError("DISPLAY must be: real, abs, intensity, or phase")
+        raise ValueError("DISPLAY must be: signed_abs, abs, intensity, or phase")
 
 
 # ============================================================
@@ -129,7 +136,6 @@ f.make_fiber_modes(
 print("V-number:", f.V)
 print("Total number of scalar modes:", f.nmodes)
 
-# This is useful for checking what was generated
 print("Supported LP mode groups:")
 for l_val, m_val in zip(f.allmodes_l, f.allmodes_m):
     print(f"  LP{l_val}{m_val}")
@@ -159,20 +165,23 @@ for l in range(0, MAX_L + 1):
 
         mode_idx = mode_lookup[(l, m)]
 
-        # Use cos-oriented Cartesian field from example_fiber_modes.py
+        # Use cos-oriented Cartesian field
         E = f.allmodefields_cos_cart[mode_idx]
 
-        # The LP modes are real signed amplitudes.
-        # Negative values represent pi phase, so keeping the sign is important.
+        # Make complex
         E_complex = E.astype(np.complex128)
 
         # Fourier transform
         F = fft_centred_mode(E_complex)
 
-        # Crop central Fourier region for clearer plotting
-        F_crop = centre_crop(F, FFT_CROP_FRAC)
+        # Correct the global l-dependent Fourier phase
+        # If the sign pattern looks flipped, try (-1j)**l instead
+        Fc = F * (1j)**l
 
-        # Convert complex Fourier result into visible image
+        # Crop central Fourier region
+        F_crop = centre_crop(Fc, FFT_CROP_FRAC)
+
+        # Convert to plottable image
         img, cmap, vmin, vmax = make_display_image(F_crop, DISPLAY)
 
         x0 = m - CELL_SIZE / 2
@@ -208,9 +217,6 @@ ax.set_title(
     fontweight="bold"
 )
 
-OUTFILE = os.path.join(outdir, "fourier_lp_modes_grid_abs.png")
-
-# later, after plotting:
 plt.tight_layout()
 plt.savefig(OUTFILE, dpi=300, bbox_inches="tight")
 plt.show()
