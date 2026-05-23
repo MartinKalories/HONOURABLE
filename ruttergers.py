@@ -213,7 +213,7 @@ ax.grid(True, linestyle="--", alpha=0.45)
 ax.set_axisbelow(True)
 
 ax.set_title(
-    f"Fourier-transformed LP modes, V = {f.V:.2f}",
+    f"Fourier-transformed LP modes",
     fontweight="bold"
 )
 
