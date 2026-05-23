@@ -213,7 +213,7 @@ plt.savefig(OUTFILE, dpi=300)
 plt.show()
 phase_plot_save_path = os.path.join(
     outdir,
-    f"LP_random_field_phase_example_gen{N_MODES_GENERATE}_fit{N_MODES_FIT}modes.png"
+    f"ruttegers attempt.png"
 )
 
 print(f"Saved figure to: {OUTFILE}")
