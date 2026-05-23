@@ -1,42 +1,56 @@
+"""
+Fourier transform and display LP modes from example_fiber_modes.py style code.
+"""
+
+from lanternfiber import lanternfiber
 import numpy as np
 import matplotlib.pyplot as plt
 
-from lanternfiber import lanternfiber
-
 
 # ============================================================
-# SETTINGS
+# Fibre parameters from example_fiber_modes.py
 # ============================================================
 
-# Replace these with your actual fibre values
-N_CORE = 1.479
-N_CLADDING = 1.444
-CORE_RADIUS = 25.0      # microns
-WAVELENGTH = 1.55      # microns
+n_core = 1.44
+n_cladding = 1.4345
+wavelength = 1.55       # microns
+core_radius = 32.8 / 2  # microns
 
-MAX_L = 20             # vertical axis
-MAX_M = 8              # horizontal axis
+show_plots = False
 
-NPIX = 256             # half-width of mode image
-MAX_R = 2              # mode image extends to 2 core radii
+# Plot settings
+MAX_L = 20
+MAX_M = 8
 
-DISPLAY = "real"       # "real", "abs", "intensity", or "phase"
-FFT_CROP_FRAC = 0.45   # crop centre of Fourier plane
+NPIX = 256
+MAX_R = 2
 
 CELL_SIZE = 0.75
-OUTFILE = "fourier_lp_mode_grid.png"
+FFT_CROP_FRAC = 0.45
+
+DISPLAY = "real"
+# Options:
+# "real"      -> red/blue Fourier field, closest to your example image
+# "abs"       -> Fourier amplitude
+# "intensity" -> Fourier intensity
+# "phase"     -> Fourier phase
+
+OUTFILE = "fourier_lp_modes_grid.png"
 
 
 # ============================================================
-# FOURIER HELPERS
+# Fourier helper functions
 # ============================================================
 
-def fft_mode(E):
+def fft_centred_mode(E):
     """
-    Fourier transform a centred LP mode image.
+    Fourier transform a mode field that is centred in the image.
 
-    ifftshift moves the centre of the image to index (0, 0),
-    which is what numpy's FFT expects.
+    ifftshift moves the image centre to array index (0, 0),
+    which is what np.fft.fft2 expects.
+
+    fftshift moves the zero-frequency component back to the centre
+    for plotting.
     """
     return np.fft.fftshift(
         np.fft.fft2(
@@ -46,76 +60,90 @@ def fft_mode(E):
     )
 
 
-def centre_crop(img, crop_frac=0.45):
-    n = img.shape[0]
-    c = n // 2
-    half = int((n * crop_frac) / 2)
+def centre_crop(img, crop_frac):
+    """
+    Crop around the centre of the Fourier plane.
+    """
+    ny, nx = img.shape
+    cy, cx = ny // 2, nx // 2
 
-    return img[c - half:c + half, c - half:c + half]
+    half_y = int((ny * crop_frac) / 2)
+    half_x = int((nx * crop_frac) / 2)
+
+    return img[
+        cy - half_y:cy + half_y,
+        cx - half_x:cx + half_x
+    ]
 
 
-def display_image(F, display="real"):
+def make_display_image(F, display):
+    """
+    Convert complex Fourier field into a plottable image.
+    """
     if display == "real":
         img = np.real(F)
         vmax = np.max(np.abs(img))
         if vmax > 0:
             img = img / vmax
-        return img, "seismic", -1, 1
+        return img, "bwr", -1, 1
 
-    if display == "abs":
+    elif display == "abs":
         img = np.abs(F)
         vmax = np.max(img)
         if vmax > 0:
             img = img / vmax
         return img, "inferno", 0, 1
 
-    if display == "intensity":
+    elif display == "intensity":
         img = np.abs(F) ** 2
         vmax = np.max(img)
         if vmax > 0:
             img = img / vmax
         return img, "inferno", 0, 1
 
-    if display == "phase":
-        img = np.angle(F) / np.pi
-        return img, "twilight", -1, 1
+    elif display == "phase":
+        img = np.angle(F)
+        return img, "twilight", -np.pi, np.pi
 
-    raise ValueError("DISPLAY must be 'real', 'abs', 'intensity', or 'phase'")
+    else:
+        raise ValueError("DISPLAY must be: real, abs, intensity, or phase")
 
 
 # ============================================================
-# MAKE LP MODES USING YOUR lanternfibre.py FILE
+# Generate modes using the same structure as example_fiber_modes.py
 # ============================================================
 
-fib = lanternfiber(
-    n_core=N_CORE,
-    n_cladding=N_CLADDING,
-    core_radius=CORE_RADIUS,
-    wavelength=WAVELENGTH
-)
+f = lanternfiber(n_core, n_cladding, core_radius, wavelength)
 
-fib.find_fiber_modes(max_l=MAX_L + 1, verbose=True)
-
-fib.make_fiber_modes(
+f.find_fiber_modes()
+f.make_fiber_modes(
     max_r=MAX_R,
     npix=NPIX,
-    show_plots=False,
-    normtosum=True
+    show_plots=show_plots,
+    plot_pausetime=0.5
 )
 
-print(f"V-number = {fib.V:.3f}")
+print("V-number:", f.V)
+print("Total number of scalar modes:", f.nmodes)
+
+# This is useful for checking what was generated
+print("Supported LP mode groups:")
+for l_val, m_val in zip(f.allmodes_l, f.allmodes_m):
+    print(f"  LP{l_val}{m_val}")
 
 
-# Make lookup table:
-# key = (l, m), value = index into fib.allmodefields_cos_cart
+# ============================================================
+# Build lookup table for LP(l, m) -> mode index
+# ============================================================
+
 mode_lookup = {}
 
-for idx, (l_val, m_val) in enumerate(zip(fib.allmodes_l, fib.allmodes_m)):
+for idx, (l_val, m_val) in enumerate(zip(f.allmodes_l, f.allmodes_m)):
     mode_lookup[(int(l_val), int(m_val))] = idx
 
 
 # ============================================================
-# PLOT FOURIER-TRANSFORMED LP MODE GRID
+# Plot Fourier-transformed LP modes
 # ============================================================
 
 fig, ax = plt.subplots(figsize=(7, 13))
@@ -128,20 +156,21 @@ for l in range(0, MAX_L + 1):
 
         mode_idx = mode_lookup[(l, m)]
 
-        # This is the real-space LP mode from lanternfibre.py
-        E = fib.allmodefields_cos_cart[mode_idx]
+        # Use cos-oriented Cartesian field from example_fiber_modes.py
+        E = f.allmodefields_cos_cart[mode_idx]
 
-        # Convert signed real field into complex field
-        E_complex = fib.make_complex_fld(E)
+        # The LP modes are real signed amplitudes.
+        # Negative values represent pi phase, so keeping the sign is important.
+        E_complex = E.astype(np.complex128)
 
         # Fourier transform
-        F = fft_mode(E_complex)
+        F = fft_centred_mode(E_complex)
 
-        # Crop around zero spatial frequency
+        # Crop central Fourier region for clearer plotting
         F_crop = centre_crop(F, FFT_CROP_FRAC)
 
-        # Convert complex Fourier field into something visible
-        img, cmap, vmin, vmax = display_image(F_crop, DISPLAY)
+        # Convert complex Fourier result into visible image
+        img, cmap, vmin, vmax = make_display_image(F_crop, DISPLAY)
 
         x0 = m - CELL_SIZE / 2
         x1 = m + CELL_SIZE / 2
@@ -162,8 +191,8 @@ for l in range(0, MAX_L + 1):
 ax.set_xlim(0.5, MAX_M + 0.5)
 ax.set_ylim(-0.5, MAX_L + 0.5)
 
-ax.set_xticks(np.arange(1, MAX_M + 1, 1))
-ax.set_yticks(np.arange(0, MAX_L + 1, 1))
+ax.set_xticks(np.arange(1, MAX_M + 1))
+ax.set_yticks(np.arange(0, MAX_L + 1))
 
 ax.set_xlabel("mode index m", fontweight="bold")
 ax.set_ylabel("mode index l", fontweight="bold")
@@ -172,7 +201,7 @@ ax.grid(True, linestyle="--", alpha=0.45)
 ax.set_axisbelow(True)
 
 ax.set_title(
-    f"Fourier-transformed LP modes, V = {fib.V:.2f}",
+    f"Fourier-transformed LP modes, V = {f.V:.2f}",
     fontweight="bold"
 )
 
@@ -180,4 +209,4 @@ plt.tight_layout()
 plt.savefig(OUTFILE, dpi=300)
 plt.show()
 
-print(f"Saved image to {OUTFILE}")
+print(f"Saved figure to: {OUTFILE}")
