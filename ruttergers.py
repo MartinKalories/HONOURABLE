@@ -31,7 +31,7 @@ MAX_R = 2
 
 CELL_SIZE = 0.75
 FFT_CROP_FRAC = 0.10
-DISPLAY = "phase"
+DISPLAY = "abs"
 # Options:
 # "real"      -> red/blue Fourier field, closest to your example image
 # "abs"       -> Fourier amplitude
@@ -208,7 +208,7 @@ ax.set_title(
     fontweight="bold"
 )
 
-OUTFILE = os.path.join(outdir, "fourier_lp_modes_grid_phase.png")
+OUTFILE = os.path.join(outdir, "fourier_lp_modes_grid_abs.png")
 
 # later, after plotting:
 plt.tight_layout()
