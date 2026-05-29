@@ -20,7 +20,7 @@ from thirdopt import train_one_run, get_base_pdict, datadir
 # Keep this the same to resume a crashed run.
 # Change this when starting a new experiment.
 # ------------------------------------------------------------
-RUN_ID = "bayesopt_current_nosub_noLW_more_epochs"
+RUN_ID = "bayesopt_current_nosub_noLW_more_epochs_cont_only"
 
 save_dir = datadir
 os.makedirs(save_dir, exist_ok=True)
@@ -39,13 +39,13 @@ space = [
     Real(0.0, 0.6, name="dropout_rate_dense"),
     Real(0.0, 0.8, name="dropout_rate_psf"),
     Integer(512, 4096, name="n_units_dense"),
-    Categorical([3, 5, 7], name="ksz_enc"),
-    Categorical([3, 5], name="ksz_psf"),
-    Categorical([3, 5], name="ksz_wf"),
-    Categorical([64, 96, 128], name="nfilts_enc"),
-    Categorical([32, 64, 96], name="nfilts_psf"),
-    Categorical([32, 64, 96], name="nfilts_wf"),
-    Categorical(["relu", "elu", "gelu"], name="actFunc"),
+    #Categorical([3, 5, 7], name="ksz_enc"),
+    #Categorical([3, 5], name="ksz_psf"),
+    #Categorical([3, 5], name="ksz_wf"),
+    #Categorical([64, 96, 128], name="nfilts_enc"),
+    #Categorical([32, 64, 96], name="nfilts_psf"),
+    #Categorical([32, 64, 96], name="nfilts_wf"),
+    #Categorical(["relu", "elu", "gelu"], name="actFunc"),
 ]
 
 space_param_keys = [dim.name for dim in space]
