@@ -34,11 +34,11 @@ all_trials_filename = os.path.join(save_dir, f"{RUN_ID}_all_trials.csv")
 # Search space
 # ------------------------------------------------------------
 space = [
-    Real(1e-5, 1e-4, prior="log-uniform", name="learningRate"),
+    Real(1e-5, 2e-4, prior="log-uniform", name="learningRate"),
     Real(0.0, 0.4, name="dropout_rate"),
     Real(0.0, 0.6, name="dropout_rate_dense"),
     Real(0.0, 0.8, name="dropout_rate_psf"),
-    Integer(512, 4096, name="n_units_dense"),
+    Integer(512, 4000, name="n_units_dense"),
     #Categorical([3, 5, 7], name="ksz_enc"),
     #Categorical([3, 5], name="ksz_psf"),
     #Categorical([3, 5], name="ksz_wf"),
