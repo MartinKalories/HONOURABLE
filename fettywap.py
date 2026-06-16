@@ -52,7 +52,7 @@ for i in range(N_TEST):
         max_nfev=MAX_NFEV,
         n_restarts=N_RESTARTS,
         rng=rng,
-
+    )
 # --------------------------------------------------
 # Generate LP modes
 # --------------------------------------------------
