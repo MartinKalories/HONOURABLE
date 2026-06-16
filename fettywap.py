@@ -40,19 +40,6 @@ RNG_SEED = 41
 rng = np.random.default_rng(RNG_SEED)
 EXAMPLE_INDEX = 12
 
-for i in range(N_TEST):
-    print(f"\nFitting sample {i + 1}/{N_TEST}")
-
-    target_image = intensities[i]
-    target_field = fields_true_normalised[i]
-
-    coeff_fit, intensity_fit, field_fit, res = fit_lp_coeffs_to_target_complex_field(
-        mode_matrix_fit,
-        target_field,
-        max_nfev=MAX_NFEV,
-        n_restarts=N_RESTARTS,
-        rng=rng,
-    )
 # --------------------------------------------------
 # Generate LP modes
 # --------------------------------------------------
@@ -362,10 +349,7 @@ for i in range(N_TEST):
     print(f"\nFitting sample {i + 1}/{N_TEST}")
 
     target_image = intensities[i]
-    # The target complex field is known here because we generated the target.
-    # It is normalised so that |E_target|^2 matches the normalised target intensity.
     target_field = fields_true_normalised[i]
-    true_coeff = coeffs_true[i]
 
     coeff_fit, intensity_fit, field_fit, res = fit_lp_coeffs_to_target_complex_field(
         mode_matrix_fit,
