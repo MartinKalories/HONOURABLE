@@ -291,7 +291,10 @@ def plot_kde_1d(samples, weights, labels, csv_path, grids=400):
         bw = kde_bandwidth(x, weights)
 
         if bw is not None:
-            print(f"1D KDE bandwidth for {labels[k]}: {bw[0]:.6g}")
+            bw_label = f"{bw[0]:.3g}"
+            print(f"1D KDE bandwidth for {labels[k]}: {bw_label}")
+        else:
+            bw_label = "NA"
 
         grid, pdf = kde_1d(x, weights, grids=grids)
 
@@ -317,7 +320,7 @@ def plot_kde_1d(samples, weights, labels, csv_path, grids=400):
 
         plt.xlabel(labels[k])
         plt.ylabel("Marginal PDF")
-        plt.title(f"1D KDE: {labels[k]}")
+        plt.title(f"1D KDE: {labels[k]}|  bandwidth = {bw_label}")
         plt.legend()
         plt.tight_layout()
 
@@ -740,11 +743,17 @@ def plot_all_2d_kde_pairs(
             weights=weights,
         )
 
-        if bw is not None:
+       if bw is not None:
+            bw_x_label = f"{bw[0]:.3g}"
+            bw_y_label = f"{bw[1]:.3g}"
+
             print(
                 f"2D KDE bandwidth for {x_label} vs {y_label}: "
-                f"{x_label} = {bw[0]:.6g}, {y_label} = {bw[1]:.6g}"
+                f"{x_label} = {bw_x_label}, {y_label} = {bw_y_label}"
             )
+        else:
+            bw_x_label = "NA"
+            bw_y_label = "NA"
 
         X_grid, Y_grid, Z = kde_2d(
             x,
@@ -875,8 +884,8 @@ def plot_all_2d_kde_pairs(
             zorder=10,
         )
 
-        plt.xlabel(x_label)
-        plt.ylabel(y_label)
+        plt.xlabel(f"{x_label} | bw={bw_x_label}")
+        plt.ylabel(f"{y_label} | bw={bw_y_label}")
         plt.title(f"2D KDE: {x_label} vs {y_label}")
 
         # Proper ticks for discrete/categorical axes
