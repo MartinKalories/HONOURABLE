@@ -743,7 +743,7 @@ def plot_all_2d_kde_pairs(
             weights=weights,
         )
 
-       if bw is not None:
+        if bw is not None:
             bw_x_label = f"{bw[0]:.3g}"
             bw_y_label = f"{bw[1]:.3g}"
 
