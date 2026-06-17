@@ -32,7 +32,6 @@ loss_col = "objective_val_loss"
 T = 0.1
 
 continuous_params = [
-    "learningRate",
     "dropout_rate",
     "dropout_rate_dense",
     "dropout_rate_psf",
@@ -40,19 +39,15 @@ continuous_params = [
 ]
 
 discrete_params = [
-    "ksz_enc",
     "ksz_psf",
     "ksz_wf",
-    "nfilts_enc",
     "nfilts_psf",
     "nfilts_wf",
-    "actFunc",
 ]
 
 all_params = continuous_params + discrete_params
 
 continuous_labels = [
-    "log10(learningRate)",
     "dropout_rate",
     "dropout_rate_dense",
     "dropout_rate_psf",
@@ -106,18 +101,15 @@ df["kde_weight"] = weights
 # Continuous samples for KDE
 # ==================================================
 def make_continuous_samples(df):
-    """
-    Creates the continuous data matrix used for KDE.
+    samples_df = df[continuous_params].astype(float).copy()
 
-    learningRate and n_units_dense are log-transformed because they span
-    large numerical ranges.
-    """
-    samples = df[continuous_params].to_numpy(dtype=float)
+    if "learningRate" in samples_df.columns:
+        samples_df["learningRate"] = np.log10(samples_df["learningRate"])
 
-    samples[:, 0] = np.log10(samples[:, 0])  # learningRate
-    samples[:, 4] = np.log10(samples[:, 4])  # n_units_dense
+    if "n_units_dense" in samples_df.columns:
+        samples_df["n_units_dense"] = np.log10(samples_df["n_units_dense"])
 
-    return samples
+    return samples_df.to_numpy(dtype=float)
 
 
 samples = make_continuous_samples(df)
@@ -183,21 +175,15 @@ def kde_2d(x, y, w, grids=200, bw_method=None):
     except np.linalg.LinAlgError:
         return X, Y, None
         
-def make_5d_continuous_optimum_dict(optimum_5d_transformed):
-    """
-    Converts the 5D KDE optimum into a dictionary with names matching
-    the continuous columns used inside make_all_kde_variables().
-    """
-
-    if optimum_5d_transformed is None:
+def make_continuous_optimum_dict(optimum_transformed):
+    if optimum_transformed is None:
         return None
 
     return {
-        "log10_learningRate": optimum_5d_transformed[0],
-        "dropout_rate": optimum_5d_transformed[1],
-        "dropout_rate_dense": optimum_5d_transformed[2],
-        "dropout_rate_psf": optimum_5d_transformed[3],
-        "log10_n_units_dense": optimum_5d_transformed[4],
+        "dropout_rate": optimum_transformed[0],
+        "dropout_rate_dense": optimum_transformed[1],
+        "dropout_rate_psf": optimum_transformed[2],
+        "log10_n_units_dense": optimum_transformed[3],
     }
 
 
@@ -226,7 +212,7 @@ def find_5d_kde_optimum(df, loss, csv_path, T=0.1, bw_method=None):
     ]
 
     def negative_kde_density(x):
-        x = np.asarray(x).reshape(5, 1)
+        x = np.asarray(x).reshape(len(continuous_params), 1)
         return -kde(x)[0]
 
     result = differential_evolution(
@@ -240,14 +226,12 @@ def find_5d_kde_optimum(df, loss, csv_path, T=0.1, bw_method=None):
     peak_density_5d = -result.fun
 
     optimum_physical = {
-        "learningRate": 10 ** optimum_5d_transformed[0],
-        "dropout_rate": optimum_5d_transformed[1],
-        "dropout_rate_dense": optimum_5d_transformed[2],
-        "dropout_rate_psf": optimum_5d_transformed[3],
-        "n_units_dense": 10 ** optimum_5d_transformed[4],
-        "log10_learningRate": optimum_5d_transformed[0],
-        "log10_n_units_dense": optimum_5d_transformed[4],
-        "kde_peak_density_5d": peak_density_5d,
+        "dropout_rate": optimum_5d_transformed[0],
+        "dropout_rate_dense": optimum_5d_transformed[1],
+        "dropout_rate_psf": optimum_5d_transformed[2],
+        "n_units_dense": 10 ** optimum_5d_transformed[3],
+        "log10_n_units_dense": optimum_5d_transformed[3],
+        "kde_peak_density_4d": peak_density_5d,
         "T": T,
     }
 
@@ -1240,8 +1224,7 @@ if __name__ == "__main__":
         csv_path=csv_path,
         T=T,
     )
-    kde5d_continuous_point = make_5d_continuous_optimum_dict(
-        optimum_5d_transformed
+    kde_continuous_point = make_continuous_optimum_dict(optimum_5d_transformed)
     )
     # ------------------------------
     # 1D continuous KDE plots
