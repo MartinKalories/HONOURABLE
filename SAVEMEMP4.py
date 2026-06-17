@@ -284,7 +284,7 @@ def main():
                 # ------------------------------------------------
                 # NaN / Inf guard
                 # ------------------------------------------------
-                 if not np.isfinite(objective_val):
+                if not np.isfinite(objective_val):
                     print("NaN or Inf loss detected. Setting loss to 50 for this trial.")
                     print("Params:", params)
 
