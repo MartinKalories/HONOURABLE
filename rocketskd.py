@@ -118,6 +118,24 @@ samples = make_continuous_samples(df)
 # ==================================================
 # KDE helper functions
 # ==================================================
+def kde_bandwidth(data, weights=None, bw_method=None):
+    data = np.asarray(data, dtype=float)
+
+    if data.ndim == 1:
+        data = data[np.newaxis, :]
+
+    try:
+        kde = gaussian_kde(
+            data,
+            weights=weights,
+            bw_method=bw_method,
+        )
+
+        return np.sqrt(np.diag(kde.covariance))
+
+    except np.linalg.LinAlgError:
+        return None
+
 def kde_1d(x, w, grids=400, bw_method=None):
     x = np.asarray(x, dtype=float)
     w = np.asarray(w, dtype=float)
@@ -270,6 +288,10 @@ def plot_kde_1d(samples, weights, labels, csv_path, grids=400):
 
     for k in range(samples.shape[1]):
         x = samples[:, k]
+        bw = kde_bandwidth(x, weights)
+
+        if bw is not None:
+            print(f"1D KDE bandwidth for {labels[k]}: {bw[0]:.6g}")
 
         grid, pdf = kde_1d(x, weights, grids=grids)
 
@@ -711,6 +733,19 @@ def plot_all_2d_kde_pairs(
         x = X_all[col_x].to_numpy(dtype=float)
         y = X_all[col_y].to_numpy(dtype=float)
 
+        x_label = variable_info[col_x]["label"]
+        y_label = variable_info[col_y]["label"]
+        bw = kde_bandwidth(
+            np.vstack([x, y]),
+            weights=weights,
+        )
+
+    if bw is not None:
+        print(
+            f"2D KDE bandwidth for {x_label} vs {y_label}: "
+            f"{x_label} = {bw[0]:.6g}, {y_label} = {bw[1]:.6g}"
+        )
+
         X_grid, Y_grid, Z = kde_2d(
             x,
             y,
@@ -718,8 +753,7 @@ def plot_all_2d_kde_pairs(
             grids=grids,
         )
 
-        x_label = variable_info[col_x]["label"]
-        y_label = variable_info[col_y]["label"]
+        
 
         if Z is None:
             print(f"Skipping 2D KDE for {x_label} vs {y_label}: not enough variation.")
