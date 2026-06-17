@@ -740,11 +740,11 @@ def plot_all_2d_kde_pairs(
             weights=weights,
         )
 
-    if bw is not None:
-        print(
-            f"2D KDE bandwidth for {x_label} vs {y_label}: "
-            f"{x_label} = {bw[0]:.6g}, {y_label} = {bw[1]:.6g}"
-        )
+        if bw is not None:
+            print(
+                f"2D KDE bandwidth for {x_label} vs {y_label}: "
+                f"{x_label} = {bw[0]:.6g}, {y_label} = {bw[1]:.6g}"
+            )
 
         X_grid, Y_grid, Z = kde_2d(
             x,
