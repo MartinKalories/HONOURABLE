@@ -594,12 +594,7 @@ def make_all_kde_variables(df):
     # ------------------------------
     # Continuous variables
     # ------------------------------
-    X["log10_learningRate"] = np.log10(df["learningRate"].astype(float))
-    variable_info["log10_learningRate"] = {
-        "label": "log10(learningRate)",
-        "type": "continuous",
-    }
-
+    
     X["dropout_rate"] = df["dropout_rate"].astype(float)
     variable_info["dropout_rate"] = {
         "label": "dropout_rate",
@@ -1138,11 +1133,10 @@ def plot_continuous_variable_effects(df, csv_path):
 
     df_plot = df.copy()
 
-    df_plot["log10_learningRate"] = np.log10(df_plot["learningRate"])
+    
     df_plot["log10_n_units_dense"] = np.log10(df_plot["n_units_dense"])
 
     plot_cols = [
-        ("log10_learningRate", "log10(learningRate)"),
         ("dropout_rate", "dropout_rate"),
         ("dropout_rate_dense", "dropout_rate_dense"),
         ("dropout_rate_psf", "dropout_rate_psf"),
@@ -1225,7 +1219,7 @@ if __name__ == "__main__":
         T=T,
     )
     kde_continuous_point = make_continuous_optimum_dict(optimum_5d_transformed)
-    )
+    
     # ------------------------------
     # 1D continuous KDE plots
     # ------------------------------
@@ -1247,7 +1241,7 @@ if __name__ == "__main__":
         df=df,
         weights=weights,
         csv_path=csv_path,
-        kde5d_continuous_point=kde5d_continuous_point,
+        kde5d_continuous_point=kde_continuous_point,
     )
 
     # ------------------------------
