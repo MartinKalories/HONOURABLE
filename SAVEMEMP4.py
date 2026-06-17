@@ -34,17 +34,17 @@ all_trials_filename = os.path.join(save_dir, f"{RUN_ID}_all_trials.csv")
 # Search space
 # ------------------------------------------------------------
 space = [
-    Real(1e-5, 2e-4, prior="log-uniform", name="learningRate"),
+    #Real(1e-5, 2e-4, prior="log-uniform", name="learningRate"),
     Real(0.0, 0.4, name="dropout_rate"),
     Real(0.0, 0.6, name="dropout_rate_dense"),
     Real(0.0, 0.8, name="dropout_rate_psf"),
     Integer(512, 4000, name="n_units_dense"),
     #Categorical([3, 5, 7], name="ksz_enc"),
-    #Categorical([3, 5], name="ksz_psf"),
-    #Categorical([3, 5], name="ksz_wf"),
+    Categorical([3, 5], name="ksz_psf"),
+    Categorical([3, 5], name="ksz_wf"),
     #Categorical([64, 96, 128], name="nfilts_enc"),
-    #Categorical([32, 64, 96], name="nfilts_psf"),
-    #Categorical([32, 64, 96], name="nfilts_wf"),
+    Categorical([32, 64, 96], name="nfilts_psf"),
+    Categorical([32, 64, 96], name="nfilts_wf"),
     #Categorical(["relu", "elu", "gelu"], name="actFunc"),
 ]
 
@@ -284,18 +284,11 @@ def main():
                 # ------------------------------------------------
                 # NaN / Inf guard
                 # ------------------------------------------------
-                if not np.isfinite(objective_val):
-                    print("NaN or Inf loss detected. Skipping this trial.")
+                 if not np.isfinite(objective_val):
+                    print("NaN or Inf loss detected. Setting loss to 50 for this trial.")
                     print("Params:", params)
 
-                    if result is not None:
-                        del result
-                        result = None
-
-                    tf.keras.backend.clear_session()
-                    gc.collect()
-
-                    continue
+                    objective_val = 50
 
             except Exception as e:
                 print("Trial crashed with params:", params)
