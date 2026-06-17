@@ -885,6 +885,175 @@ def plot_all_2d_kde_pairs(
 # Overlay kernel sizes onto the 1D KDE plots
 # using fixed colours and a normal legend
 # ==================================================
+def plot_2d_kde_corner(
+    df,
+    weights,
+    csv_path,
+    kde_continuous_point=None,
+    columns=None,
+    grids=120,
+    levels=20,
+):
+    """
+    Makes a corner-plot-style grid of 2D KDE projections.
+
+    No histograms are plotted on the diagonal. The diagonal only labels
+    each variable.
+    """
+
+    X_all, variable_info = make_all_kde_variables(df)
+
+    if columns is None:
+        columns = list(X_all.columns)
+
+    n_vars = len(columns)
+    best_idx = df[loss_col].idxmin()
+
+    fig, axes = plt.subplots(
+        n_vars,
+        n_vars,
+        figsize=(2.4 * n_vars, 2.4 * n_vars),
+        squeeze=False,
+    )
+
+    for row, col_y in enumerate(columns):
+        for col, col_x in enumerate(columns):
+            ax = axes[row, col]
+
+            x_label = variable_info[col_x]["label"]
+            y_label = variable_info[col_y]["label"]
+
+            # Hide upper triangle
+            if col > row:
+                ax.axis("off")
+                continue
+
+            # Diagonal: just show variable name
+            if col == row:
+                ax.text(
+                    0.5,
+                    0.5,
+                    x_label,
+                    ha="center",
+                    va="center",
+                    fontsize=10,
+                    fontweight="bold",
+                    transform=ax.transAxes,
+                )
+                ax.set_xticks([])
+                ax.set_yticks([])
+                continue
+
+            x = X_all[col_x].to_numpy(dtype=float)
+            y = X_all[col_y].to_numpy(dtype=float)
+
+            X_grid, Y_grid, Z = kde_2d(
+                x,
+                y,
+                weights,
+                grids=grids,
+            )
+
+            if Z is not None:
+                ax.contourf(
+                    X_grid,
+                    Y_grid,
+                    Z,
+                    levels=levels,
+                    cmap="viridis",
+                )
+
+                ax.contour(
+                    X_grid,
+                    Y_grid,
+                    Z,
+                    levels=levels,
+                    colors="black",
+                    alpha=0.3,
+                    linewidths=0.4,
+                )
+
+            # Raw trials
+            ax.scatter(
+                x,
+                y,
+                c=df[loss_col],
+                s=12,
+                alpha=0.65,
+                cmap="viridis_r",
+                edgecolor="none",
+            )
+
+            # Best actual trial
+            ax.scatter(
+                X_all.loc[best_idx, col_x],
+                X_all.loc[best_idx, col_y],
+                s=55,
+                marker="*",
+                color="red",
+                edgecolor="black",
+                linewidth=0.5,
+                zorder=10,
+            )
+
+            # Continuous KDE optimum, only if both axes are continuous
+            if (
+                kde_continuous_point is not None
+                and variable_info[col_x]["type"] == "continuous"
+                and variable_info[col_y]["type"] == "continuous"
+                and col_x in kde_continuous_point
+                and col_y in kde_continuous_point
+            ):
+                ax.scatter(
+                    kde_continuous_point[col_x],
+                    kde_continuous_point[col_y],
+                    s=45,
+                    marker="x",
+                    color="red",
+                    linewidths=1.5,
+                    zorder=11,
+                )
+
+            # Only label outside axes, otherwise it gets too crowded
+            if row == n_vars - 1:
+                ax.set_xlabel(x_label, fontsize=8)
+            else:
+                ax.set_xticklabels([])
+
+            if col == 0:
+                ax.set_ylabel(y_label, fontsize=8)
+            else:
+                ax.set_yticklabels([])
+
+            # Proper ticks for discrete axes
+            if variable_info[col_x]["type"] != "continuous":
+                ax.set_xticks(variable_info[col_x]["ticks"])
+                ax.set_xticklabels(
+                    variable_info[col_x]["ticklabels"],
+                    rotation=45,
+                    ha="right",
+                    fontsize=7,
+                )
+
+            if variable_info[col_y]["type"] != "continuous":
+                ax.set_yticks(variable_info[col_y]["ticks"])
+                ax.set_yticklabels(
+                    variable_info[col_y]["ticklabels"],
+                    fontsize=7,
+                )
+
+    fig.suptitle("2D KDE corner plot", fontsize=16)
+    fig.tight_layout()
+
+    save_path = output_dir / f"2D_KDE_corner_plot_{csv_path.stem}.png"
+    fig.savefig(save_path, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+
+    print("2D KDE corner plot saved to:", save_path)
+# ==================================================
+# Overlay kernel sizes onto the 1D KDE plots
+# using fixed colours and a normal legend
+# ==================================================
 def plot_kernel_sizes_on_1d_kde(samples, weights, labels, df, csv_path, grids=400):
     """
     For each continuous 1D KDE plot, overlays trial points.
@@ -1271,7 +1440,12 @@ if __name__ == "__main__":
         df=df,
         csv_path=csv_path,
     )
-
+    plot_2d_kde_corner(
+        df=df,
+        weights=weights,
+        csv_path=csv_path,
+        kde_continuous_point=kde_continuous_point,
+    )
     # ------------------------------
     # Best trial summary
     # ------------------------------
