@@ -24,7 +24,7 @@ core_radius = 32.8 / 2
 N_MODES_GENERATE = 17
 
 # Use fewer modes to fit/reconstruct the target field
-N_MODES_FIT = 10
+N_MODES_FIT = 15
 
 # Number of random fields to create
 N_RANDOM_FIELDS = 100
