@@ -972,49 +972,7 @@ def plot_2d_kde_corner(
                 continue
 
             # Diagonal: just show variable name
-            if col == row:
-                ax.text(
-                    0.5,
-                    0.5,
-                    x_label,
-                    ha="center",
-                    va="center",
-                    fontsize=10,
-                    fontweight="bold",
-                    transform=ax.transAxes,
-                )
-                ax.set_xticks([])
-                ax.set_yticks([])
-                continue
-
-            x = X_all[col_x].to_numpy(dtype=float)
-            y = X_all[col_y].to_numpy(dtype=float)
-
-            X_grid, Y_grid, Z = kde_2d(
-                x,
-                y,
-                weights,
-                grids=grids,
-            )
-
-            if Z is not None:
-                ax.contourf(
-                    X_grid,
-                    Y_grid,
-                    Z,
-                    levels=levels,
-                    cmap="viridis",
-                )
-
-                ax.contour(
-                    X_grid,
-                    Y_grid,
-                    Z,
-                    levels=levels,
-                    colors="black",
-                    alpha=0.3,
-                    linewidths=0.4,
-                )
+            
 
             # Raw trials
             ax.scatter(
