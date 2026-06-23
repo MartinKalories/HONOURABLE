@@ -951,7 +951,31 @@ def plot_2d_kde_corner(
 
     n_vars = len(columns)
     best_idx = df[loss_col].idxmin()
+    # --------------------------------------------------
+    # Shared axis limits and ticks for each variable
+    # This keeps each column/row consistently binned
+    # --------------------------------------------------
+    axis_limits = {}
+    axis_ticks = {}
 
+    for c in columns:
+        vals = X_all[c].to_numpy(dtype=float)
+
+        vmin = np.nanmin(vals)
+        vmax = np.nanmax(vals)
+
+        if np.isclose(vmin, vmax):
+            vmin -= 0.5
+            vmax += 0.5
+
+        axis_limits[c] = (vmin, vmax)
+    
+        if variable_info[c]["type"] == "continuous":
+        # Same tick positions everywhere this variable appears
+            axis_ticks[c] = np.linspace(vmin, vmax, 4)
+        else:
+        # Discrete variables use their actual values
+            axis_ticks[c] = variable_info[c]["ticks"]
     fig, axes = plt.subplots(
         n_vars,
         n_vars,
@@ -979,7 +1003,7 @@ def plot_2d_kde_corner(
                     grid_1d, pdf_1d = kde_1d(
                         x_diag,
                         weights,
-                        grids=max(300, grids),
+                        grids=grids,
                     )
 
                     bw = kde_bandwidth(x_diag, weights)
@@ -1055,7 +1079,9 @@ def plot_2d_kde_corner(
                         )
 
                         ax.set_yticks([])
-
+                        ax.set_xlim(axis_limits[col_x])
+                        ax.set_xticks(axis_ticks[col_x])
+                        ax.tick_params(axis="x", labelbottom=True, labelsize=6)
                         ax.set_xlabel(x_label, fontsize=7)
                         ax.tick_params(axis="x", labelbottom=True, labelsize=6)
                         ax.locator_params(axis="x", nbins=3)
@@ -1159,7 +1185,11 @@ def plot_2d_kde_corner(
                     linewidths=1.5,
                     zorder=11,
                 )
+            ax.set_xlim(axis_limits[col_x])
+            ax.set_xticks(axis_ticks[col_x])
 
+            ax.set_ylim(axis_limits[col_y])
+            ax.set_yticks(axis_ticks[col_y])
             # Only label outside axes, otherwise it gets too crowded
             if row == n_vars - 1:
                 ax.set_xlabel(x_label, fontsize=8)
