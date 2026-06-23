@@ -972,8 +972,155 @@ def plot_2d_kde_corner(
                 continue
 
             # Diagonal: just show variable name
-            
+            if col == row:
+                x_diag = X_all[col_x].to_numpy(dtype=float)
 
+                if variable_info[col_x]["type"] == "continuous":
+                    grid_1d, pdf_1d = kde_1d(
+                        x_diag,
+                        weights,
+                        grids=max(300, grids),
+                    )
+
+                    bw = kde_bandwidth(x_diag, weights)
+
+                    if bw is not None:
+                        bw_label = f"{bw[0]:.3g}"
+                    else:
+                        bw_label = "NA"
+
+                    if grid_1d is not None:
+                        ax.plot(
+                            grid_1d,
+                            pdf_1d,
+                            linewidth=1.5,
+                            color="black",
+                        )
+
+                        max_idx = np.argmax(pdf_1d)
+                        kde_peak = grid_1d[max_idx]
+                        peak_density = pdf_1d[max_idx]
+
+                        ax.scatter(
+                            kde_peak,
+                            peak_density,
+                            s=35,
+                            marker="o",
+                            color="black",
+                            edgecolor="white",
+                            linewidth=0.6,
+                            zorder=10,
+                        )
+
+                        best_x = X_all.loc[best_idx, col_x]
+                        best_y = np.interp(best_x, grid_1d, pdf_1d)
+
+                        ax.scatter(
+                            best_x,
+                            best_y,
+                            s=45,
+                            marker="*",
+                            color="red",
+                            edgecolor="black",
+                            linewidth=0.5,
+                            zorder=11,
+                        )
+
+                        if (
+                            kde_continuous_point is not None
+                            and col_x in kde_continuous_point
+                        ):
+                            opt_x = kde_continuous_point[col_x]
+                            opt_y = np.interp(opt_x, grid_1d, pdf_1d)
+
+                            ax.scatter(
+                                opt_x,
+                                opt_y,
+                                s=35,
+                                marker="x",
+                                color="red",
+                                linewidths=1.5,
+                                zorder=12,
+                            )
+
+                        ax.text(
+                            0.05,
+                            0.90,
+                            f"{x_label}\nbw={bw_label}",
+                            ha="left",
+                            va="top",
+                            fontsize=7,
+                            fontweight="bold",
+                            transform=ax.transAxes,
+                        )
+
+                        ax.set_yticks([])
+
+                        if row == n_vars - 1:
+                            ax.set_xlabel(x_label, fontsize=8)
+                        else:
+                            ax.set_xticklabels([])
+
+                    else:
+                        ax.text(
+                            0.5,
+                            0.5,
+                            f"{x_label}\nno variation",
+                            ha="center",
+                            va="center",
+                            fontsize=8,
+                            fontweight="bold",
+                            transform=ax.transAxes,
+                        )
+                        ax.set_xticks([])
+                        ax.set_yticks([])
+
+                else:
+                    ax.text(
+                        0.5,
+                        0.5,
+                        x_label,
+                        ha="center",
+                        va="center",
+                        fontsize=10,
+                        fontweight="bold",
+                        transform=ax.transAxes,
+                    )
+                    ax.set_xticks([])
+                    ax.set_yticks([])
+
+                continue
+
+
+# Off-diagonal: 2D KDE
+x = X_all[col_x].to_numpy(dtype=float)
+y = X_all[col_y].to_numpy(dtype=float)
+
+X_grid, Y_grid, Z = kde_2d(
+    x,
+    y,
+    weights,
+    grids=grids,
+)
+
+if Z is not None:
+    ax.contourf(
+        X_grid,
+        Y_grid,
+        Z,
+        levels=levels,
+        cmap="viridis",
+    )
+
+    ax.contour(
+        X_grid,
+        Y_grid,
+        Z,
+        levels=levels,
+        colors="black",
+        alpha=0.3,
+        linewidths=0.4,
+    )
             # Raw trials
             ax.scatter(
                 x,
