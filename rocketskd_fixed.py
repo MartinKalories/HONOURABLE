@@ -1056,10 +1056,9 @@ def plot_2d_kde_corner(
 
                         ax.set_yticks([])
 
-                        if row == n_vars - 1:
-                            ax.set_xlabel(x_label, fontsize=8)
-                        else:
-                            ax.set_xticklabels([])
+                        ax.set_xlabel(x_label, fontsize=7)
+                        ax.tick_params(axis="x", labelbottom=True, labelsize=6)
+                        ax.locator_params(axis="x", nbins=3)
 
                     else:
                         ax.text(
