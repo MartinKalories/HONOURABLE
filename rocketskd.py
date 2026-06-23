@@ -706,291 +706,222 @@ def nearest_axis_value(var_name, value, variable_info):
 # 2D KDE plots for all variable pairs
 # continuous-continuous, continuous-discrete, discrete-discrete
 # ==================================================
-def plot_2d_kde_corner(
+def plot_all_2d_kde_pairs(
     df,
     weights,
     csv_path,
-    kde_continuous_point=None,
-    columns=None,
-    grids=120,
-    levels=20,
+    kde5d_continuous_point=None,
+    grids=200,
+    levels=30,
 ):
     """
-    Makes a corner-plot-style grid.
+    Makes 2D KDE plots for every pair of variables.
 
-    Diagonal:
-    - continuous variables show 1D KDE curves
-    - discrete variables show labels only
+    This replaces:
+    - plot_kde_pairs(...)
+    - save_kde_results(...)
+    - plot_discrete_2d_kde_pairs(...)
 
-    Lower triangle:
-    - 2D KDE projections
+    It includes mixed continuous/discrete projections.
     """
 
     X_all, variable_info = make_all_kde_variables(df)
 
-    if columns is None:
-        columns = list(X_all.columns)
+    columns = list(X_all.columns)
+    results = []
 
-    n_vars = len(columns)
     best_idx = df[loss_col].idxmin()
 
-    fig, axes = plt.subplots(
-        n_vars,
-        n_vars,
-        figsize=(2.4 * n_vars, 2.4 * n_vars),
-        squeeze=False,
-    )
+    for col_x, col_y in combinations(columns, 2):
+        x = X_all[col_x].to_numpy(dtype=float)
+        y = X_all[col_y].to_numpy(dtype=float)
 
-    for row, col_y in enumerate(columns):
-        for col, col_x in enumerate(columns):
-            ax = axes[row, col]
+        x_label = variable_info[col_x]["label"]
+        y_label = variable_info[col_y]["label"]
+        bw = kde_bandwidth(
+            np.vstack([x, y]),
+            weights=weights,
+        )
 
-            x_label = variable_info[col_x]["label"]
-            y_label = variable_info[col_y]["label"]
+        if bw is not None:
+            bw_x_label = f"{bw[0]:.3g}"
+            bw_y_label = f"{bw[1]:.3g}"
 
-            # --------------------------------------------------
-            # Upper triangle: blank
-            # --------------------------------------------------
-            if col > row:
-                ax.axis("off")
-                continue
-
-            # --------------------------------------------------
-            # Diagonal: 1D KDE for continuous variables
-            # --------------------------------------------------
-            if col == row:
-                x_diag = X_all[col_x].to_numpy(dtype=float)
-
-                if variable_info[col_x]["type"] == "continuous":
-                    grid_1d, pdf_1d = kde_1d(
-                        x_diag,
-                        weights,
-                        grids=max(300, grids),
-                    )
-
-                    bw = kde_bandwidth(x_diag, weights)
-
-                    if bw is not None:
-                        bw_label = f"{bw[0]:.3g}"
-                    else:
-                        bw_label = "NA"
-
-                    if grid_1d is not None:
-                        ax.plot(
-                            grid_1d,
-                            pdf_1d,
-                            linewidth=1.5,
-                            color="black",
-                        )
-
-                        # 1D KDE peak
-                        max_idx = np.argmax(pdf_1d)
-                        kde_peak = grid_1d[max_idx]
-                        peak_density = pdf_1d[max_idx]
-
-                        ax.scatter(
-                            kde_peak,
-                            peak_density,
-                            s=35,
-                            marker="o",
-                            color="black",
-                            edgecolor="white",
-                            linewidth=0.6,
-                            zorder=10,
-                        )
-
-                        # Best actual trial
-                        best_x = X_all.loc[best_idx, col_x]
-                        best_y = np.interp(best_x, grid_1d, pdf_1d)
-
-                        ax.scatter(
-                            best_x,
-                            best_y,
-                            s=45,
-                            marker="*",
-                            color="red",
-                            edgecolor="black",
-                            linewidth=0.5,
-                            zorder=11,
-                        )
-
-                        # 4D/5D continuous KDE optimum
-                        if (
-                            kde_continuous_point is not None
-                            and col_x in kde_continuous_point
-                        ):
-                            opt_x = kde_continuous_point[col_x]
-                            opt_y = np.interp(opt_x, grid_1d, pdf_1d)
-
-                            ax.scatter(
-                                opt_x,
-                                opt_y,
-                                s=35,
-                                marker="x",
-                                color="red",
-                                linewidths=1.5,
-                                zorder=12,
-                            )
-
-                        ax.text(
-                            0.05,
-                            0.90,
-                            f"{x_label}\nbw={bw_label}",
-                            ha="left",
-                            va="top",
-                            fontsize=7,
-                            fontweight="bold",
-                            transform=ax.transAxes,
-                        )
-
-                        ax.set_yticks([])
-
-                        if row == n_vars - 1:
-                            ax.set_xlabel(x_label, fontsize=8)
-                        else:
-                            ax.set_xticklabels([])
-
-                    else:
-                        ax.text(
-                            0.5,
-                            0.5,
-                            f"{x_label}\nno variation",
-                            ha="center",
-                            va="center",
-                            fontsize=8,
-                            fontweight="bold",
-                            transform=ax.transAxes,
-                        )
-                        ax.set_xticks([])
-                        ax.set_yticks([])
-
-                else:
-                    # Discrete diagonal cells stay as labels
-                    ax.text(
-                        0.5,
-                        0.5,
-                        x_label,
-                        ha="center",
-                        va="center",
-                        fontsize=10,
-                        fontweight="bold",
-                        transform=ax.transAxes,
-                    )
-
-                    ax.set_xticks([])
-                    ax.set_yticks([])
-
-                continue
-
-            # --------------------------------------------------
-            # Lower triangle: 2D KDE
-            # --------------------------------------------------
-            x = X_all[col_x].to_numpy(dtype=float)
-            y = X_all[col_y].to_numpy(dtype=float)
-
-            X_grid, Y_grid, Z = kde_2d(
-                x,
-                y,
-                weights,
-                grids=grids,
+            print(
+                f"2D KDE bandwidth for {x_label} vs {y_label}: "
+                f"{x_label} = {bw_x_label}, {y_label} = {bw_y_label}"
             )
+        else:
+            bw_x_label = "NA"
+            bw_y_label = "NA"
 
-            if Z is not None:
-                ax.contourf(
-                    X_grid,
-                    Y_grid,
-                    Z,
-                    levels=levels,
-                    cmap="viridis",
-                )
+        X_grid, Y_grid, Z = kde_2d(
+            x,
+            y,
+            weights,
+            grids=grids,
+        )
 
-                ax.contour(
-                    X_grid,
-                    Y_grid,
-                    Z,
-                    levels=levels,
-                    colors="black",
-                    alpha=0.3,
-                    linewidths=0.4,
-                )
+        
 
-            # Raw trials
-            ax.scatter(
-                x,
-                y,
-                c=df[loss_col],
-                s=12,
-                alpha=0.65,
-                cmap="viridis_r",
-                edgecolor="none",
-            )
+        if Z is None:
+            print(f"Skipping 2D KDE for {x_label} vs {y_label}: not enough variation.")
 
-            # Best actual trial
-            ax.scatter(
-                X_all.loc[best_idx, col_x],
-                X_all.loc[best_idx, col_y],
-                s=55,
-                marker="*",
+            results.append({
+                "param_x": col_x,
+                "param_y": col_y,
+                "param_x_label": x_label,
+                "param_y_label": y_label,
+                "kde_peak_x": np.nan,
+                "kde_peak_y": np.nan,
+                "kde_peak_x_nearest_value": np.nan,
+                "kde_peak_y_nearest_value": np.nan,
+                "peak_density": np.nan,
+                "status": "skipped_not_enough_variation",
+            })
+
+            continue
+
+        # KDE peak
+        max_idx = np.unravel_index(np.argmax(Z), Z.shape)
+
+        peak_x = X_grid[max_idx]
+        peak_y = Y_grid[max_idx]
+        peak_density = Z[max_idx]
+
+        peak_x_nearest = nearest_axis_value(col_x, peak_x, variable_info)
+        peak_y_nearest = nearest_axis_value(col_y, peak_y, variable_info)
+
+        results.append({
+            "param_x": col_x,
+            "param_y": col_y,
+            "param_x_label": x_label,
+            "param_y_label": y_label,
+            "kde_peak_x": peak_x,
+            "kde_peak_y": peak_y,
+            "kde_peak_x_nearest_value": peak_x_nearest,
+            "kde_peak_y_nearest_value": peak_y_nearest,
+            "peak_density": peak_density,
+            "status": "ok",
+        })
+
+        plt.figure(figsize=(7, 5.5))
+
+        cf = plt.contourf(
+            X_grid,
+            Y_grid,
+            Z,
+            levels=levels,
+            cmap="viridis",
+        )
+
+        plt.contour(
+            X_grid,
+            Y_grid,
+            Z,
+            levels=levels,
+            colors="black",
+            alpha=0.35,
+            linewidths=0.5,
+        )
+
+        # Raw trials coloured by loss
+        sc = plt.scatter(
+            x,
+            y,
+            c=df[loss_col],
+            s=45,
+            alpha=0.75,
+            cmap="viridis_r",
+            edgecolor="black",
+            linewidth=0.35,
+            label="Trials",
+            zorder=8,
+        )
+
+        # Best actual trial
+        plt.scatter(
+            X_all.loc[best_idx, col_x],
+            X_all.loc[best_idx, col_y],
+            s=160,
+            marker="*",
+            color="red",
+            edgecolor="black",
+            linewidth=1.0,
+            label="Best trial",
+            zorder=11,
+        )
+
+        # 5D continuous KDE optimum projected onto this 2D plane
+        # Only plotted when both axes are continuous variables.
+        if (
+            kde5d_continuous_point is not None
+            and variable_info[col_x]["type"] == "continuous"
+            and variable_info[col_y]["type"] == "continuous"
+            and col_x in kde5d_continuous_point
+            and col_y in kde5d_continuous_point
+        ):
+            plt.scatter(
+                kde5d_continuous_point[col_x],
+                kde5d_continuous_point[col_y],
+                s=120,
+                marker="x",
                 color="red",
-                edgecolor="black",
-                linewidth=0.5,
-                zorder=10,
+                linewidths=2.5,
+                label="5D KDE optimum",
+                zorder=12,
+            )
+        # Smaller KDE peak marker
+        plt.scatter(
+            peak_x,
+            peak_y,
+            s=55,
+            marker="o",
+            color="black",
+            edgecolor="white",
+            linewidth=1.0,
+            label="2D KDE peak",
+            zorder=10,
+        )
+
+        plt.xlabel(f"{x_label} | bw={bw_x_label}")
+        plt.ylabel(f"{y_label} | bw={bw_y_label}")
+        plt.title(f"2D KDE: {x_label} vs {y_label}")
+
+        # Proper ticks for discrete/categorical axes
+        if variable_info[col_x]["type"] != "continuous":
+            plt.xticks(
+                variable_info[col_x]["ticks"],
+                variable_info[col_x]["ticklabels"],
+                rotation=30,
+                ha="right",
             )
 
-            # Continuous KDE optimum, only if both axes are continuous
-            if (
-                kde_continuous_point is not None
-                and variable_info[col_x]["type"] == "continuous"
-                and variable_info[col_y]["type"] == "continuous"
-                and col_x in kde_continuous_point
-                and col_y in kde_continuous_point
-            ):
-                ax.scatter(
-                    kde_continuous_point[col_x],
-                    kde_continuous_point[col_y],
-                    s=45,
-                    marker="x",
-                    color="red",
-                    linewidths=1.5,
-                    zorder=11,
-                )
+        if variable_info[col_y]["type"] != "continuous":
+            plt.yticks(
+                variable_info[col_y]["ticks"],
+                variable_info[col_y]["ticklabels"],
+            )
 
-            # Outside labels only
-            if row == n_vars - 1:
-                ax.set_xlabel(x_label, fontsize=8)
-            else:
-                ax.set_xticklabels([])
+        plt.colorbar(cf, label="Weighted KDE density")
+        plt.colorbar(sc, label="Objective validation loss")
 
-            if col == 0:
-                ax.set_ylabel(y_label, fontsize=8)
-            else:
-                ax.set_yticklabels([])
+        plt.legend()
+        plt.tight_layout()
 
-            # Proper ticks for discrete axes
-            if variable_info[col_x]["type"] != "continuous":
-                ax.set_xticks(variable_info[col_x]["ticks"])
-                ax.set_xticklabels(
-                    variable_info[col_x]["ticklabels"],
-                    rotation=45,
-                    ha="right",
-                    fontsize=7,
-                )
+        save_path = output_dir / f"2D_KDE_{safe_filename(x_label)}_vs_{safe_filename(y_label)}.png"
 
-            if variable_info[col_y]["type"] != "continuous":
-                ax.set_yticks(variable_info[col_y]["ticks"])
-                ax.set_yticklabels(
-                    variable_info[col_y]["ticklabels"],
-                    fontsize=7,
-                )
+        plt.savefig(save_path, dpi=300)
+        plt.close()
 
-    fig.suptitle("2D KDE corner plot", fontsize=16)
-    fig.tight_layout()
+        print(f"Saved 2D KDE plot for {x_label} vs {y_label} to:", save_path)
 
-    save_path = output_dir / f"2D_KDE_corner_plot_{csv_path.stem}.png"
-    fig.savefig(save_path, dpi=300, bbox_inches="tight")
-    plt.close(fig)
+    results_df = pd.DataFrame(results)
 
-    print("2D KDE corner plot saved to:", save_path)
+    output_path = csv_path.parent / f"KDE_2D_ALL_VARIABLES_{csv_path.name}"
+    results_df.to_csv(output_path, index=False)
+
+    print("All-variable 2D KDE results saved to:", output_path)
 
     return results_df
 # ==================================================
