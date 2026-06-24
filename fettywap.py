@@ -429,13 +429,14 @@ for i in range(N_TEST):
         )
 
         phase_mask = (
-            (example_target < #0.02 *
+            (example_target < 0.02 *
              np.max(example_target)) |
-            (example_fit < #0.02 *
+            (example_fit < 0.02 *
              np.max(example_fit))
         )
 
-        example_phase_residual = np.ma.array(phase_residual, mask=phase_mask)
+        example_phase_residual = phase_residual
+        #np.ma.array(phase_residual, mask=phase_mask)
 
 
 # --------------------------------------------------
