@@ -1239,7 +1239,14 @@ def plot_kernel_sizes_on_1d_kde(samples, weights, labels, df, csv_path, grids=40
     - ksz_wf
     """
 
-    kernel_cols = ["ksz_psf", "ksz_wf"]
+    kernel_cols = [
+        col for col in ["ksz_psf", "ksz_wf"]
+        if col in df.columns
+    ]
+
+    if len(kernel_cols) == 0:
+        print("Skipping kernel grouped 1D KDE plots: no kernel size columns found in CSV.")
+        return
 
     def kernel_colour(value):
         """
