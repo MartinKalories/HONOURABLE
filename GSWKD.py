@@ -237,14 +237,21 @@ def find_5d_kde_optimum(df, loss, csv_path, T=0.1, bw_method=None):
     optimum_5d_transformed = result.x
     peak_density_5d = -result.fun
 
-    optimum_physical = {
-        "dropout_rate": optimum_5d_transformed[0],
-        "dropout_rate_dense": optimum_5d_transformed[1],
-        "dropout_rate_psf": optimum_5d_transformed[2],
-        "n_units_dense": optimum_5d_transformed[3],
-        "kde_peak_density_4d": peak_density_5d,
-        "T": T,
-    }
+    optimum_physical = {}
+
+    for i, name in enumerate(continuous_params):
+        value = float(optimum_5d_transformed[i])
+        dim = space_by_name.get(name)
+
+    # If the optimiser variable is an Integer, save it as an integer
+        if isinstance(dim, Integer):
+            optimum_physical[name] = int(round(value))
+        else:
+            optimum_physical[name] = value
+
+    optimum_physical["kde_peak_density"] = float(peak_density_5d)
+    optimum_physical["kde_dimension"] = len(continuous_params)
+    optimum_physical["T"] = T
 
     output_path = csv_path.parent / f"KDE_5D_{csv_path.name}"
     pd.DataFrame([optimum_physical]).to_csv(output_path, index=False)
@@ -1464,22 +1471,19 @@ def plot_continuous_variable_effects(df, csv_path):
     Simple loss-vs-variable plots for continuous variables.
 
     These are not KDE plots. They are direct trial scatter plots.
+    The variables are taken automatically from optimiser space.
     """
 
     df_plot = df.copy()
+    best_idx = df_plot[loss_col].idxmin()
 
-    plot_cols = [
-        ("dropout_rate", "dropout_rate"),
-        ("dropout_rate_dense", "dropout_rate_dense"),
-        ("dropout_rate_psf", "dropout_rate_psf"),
-        ("n_units_dense", "n_units_dense"),
-    ]
+    for col in continuous_params:
+        label = col
 
-    for col, label in plot_cols:
         plt.figure(figsize=(6, 4.5))
 
         plt.scatter(
-            df_plot[col],
+            df_plot[col].astype(float),
             df_plot[loss_col],
             s=60,
             alpha=0.75,
@@ -1487,10 +1491,8 @@ def plot_continuous_variable_effects(df, csv_path):
             linewidth=0.4,
         )
 
-        best_idx = df_plot[loss_col].idxmin()
-
         plt.scatter(
-            df_plot.loc[best_idx, col],
+            float(df_plot.loc[best_idx, col]),
             df_plot.loc[best_idx, loss_col],
             s=160,
             marker="*",
@@ -1507,14 +1509,9 @@ def plot_continuous_variable_effects(df, csv_path):
         plt.legend()
         plt.tight_layout()
 
-        filename = (
-            f"continuous_effect_{label}.png"
-            .replace("(", "")
-            .replace(")", "")
-            .replace("/", "")
-        )
-
+        filename = f"continuous_effect_{safe_filename(label)}.png"
         save_path = output_dir / filename
+
         plt.savefig(save_path, dpi=300)
         plt.close()
 
