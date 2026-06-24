@@ -1375,11 +1375,20 @@ def plot_discrete_variable_effects(df, csv_path):
     - filter counts
     """
 
+    active_discrete_params = [
+        col for col in discrete_params
+        if col in df.columns
+    ]
+
+    if len(active_discrete_params) == 0:
+        print("Skipping discrete variable effects: no discrete parameters found in this CSV.")
+        return pd.DataFrame()
+
     summary_rows = []
 
     rng = np.random.default_rng(42)
 
-    for col in discrete_params:
+    for col in active_discrete_params:
         grouped_rows = []
 
         for value, group in df.groupby(col):
