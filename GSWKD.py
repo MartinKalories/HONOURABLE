@@ -15,7 +15,7 @@ from optim_space import space
 # File path
 # ==================================================
 DATA_DIR = Path("/home/manav/PL-NN-testdata_forDec2025/")
-DEFAULT_CSV = "bayesopt_current_nosub_noLW_more_epochs_all_trials.csv"
+DEFAULT_CSV = "bayesopt_current_nosub_noLW_more_epochs_cont_only_all_trials"
 
 csv_path = DATA_DIR / DEFAULT_CSV
 df = pd.read_csv(csv_path)
