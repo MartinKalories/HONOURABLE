@@ -20,7 +20,7 @@ from optim_space import space
 # Keep this the same to resume a crashed run.
 # Change this when starting a new experiment.
 # ------------------------------------------------------------
-RUN_ID = "bayesopt_current_nosub_noLR"
+RUN_ID = "trialoptspace"
 
 save_dir = datadir
 os.makedirs(save_dir, exist_ok=True)
