@@ -264,7 +264,7 @@ def normalise_complex_field_to_unit_intensity(field):
     return field / (np.sqrt(max_intensity) + 1e-12)
 
 
-def align_field_global_phase(reference_field, field_to_align, amp_threshold=0.03):
+def align_field_global_phase(reference_field, field_to_align, amp_threshold=0.00):
     """
     Align the fitted field to the target field by one global phase factor.
 
@@ -298,7 +298,7 @@ def align_field_global_phase(reference_field, field_to_align, amp_threshold=0.03
     return phase_factor * field_to_align, phase_factor
 
 
-def masked_phase_for_plot(field, intensity=None, threshold=0.02):
+def masked_phase_for_plot(field, intensity=None, threshold=0.00):
     """
     Return phase with low-intensity pixels masked.
 
