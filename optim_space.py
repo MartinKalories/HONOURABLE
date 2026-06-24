@@ -12,5 +12,5 @@ space = [
      Categorical([64, 96, 128], name="nfilts_enc"),
     Categorical([32, 64, 96], name="nfilts_psf"),
     Categorical([32, 64, 96], name="nfilts_wf"),
-    # Categorical(["relu", "elu", "gelu"], name="actFunc"),
+     Categorical(["relu", "elu", "gelu"], name="actFunc"),
 ]
