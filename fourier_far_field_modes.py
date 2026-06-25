@@ -215,7 +215,7 @@ def main():
             far_field,
             title=title,
             outpath=outfile,
-            log_intensity=True
+            log_intensity=False
         )
 
         print(f"Saved {outfile}")
