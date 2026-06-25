@@ -126,8 +126,25 @@ def plot_far_field_mode(far_field, title="", outpath=None, log_intensity=True):
     plt.colorbar()
 
     plt.subplot(1, 2, 2)
-    plt.imshow(phase, cmap="twilight", vmin=-np.pi, vmax=np.pi)
-    plt.title("Far-field phase")
+
+# Crop/zoom into the centre of the phase image
+    zoom_pixels = 80   # increase for less zoom, decrease for more zoom
+
+    cy, cx = np.array(phase.shape) // 2
+
+    phase_zoom = phase[
+        cy - zoom_pixels: cy + zoom_pixels,
+        cx - zoom_pixels: cx + zoom_pixels
+    ]
+
+    plt.imshow(
+        phase_zoom,
+        cmap="twilight",
+        vmin=-np.pi,
+        vmax=np.pi
+    )
+
+    plt.title("Far-field phase, centre zoom")
     plt.colorbar()
 
     plt.suptitle(title)
