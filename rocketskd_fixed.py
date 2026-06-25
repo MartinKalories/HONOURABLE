@@ -29,7 +29,7 @@ loss_col = "objective_val_loss"
 
 # Lower T makes only the best trials matter strongly.
 # Higher T gives smoother weighting across more trials.
-T = 0.1
+T = 0.2
 
 continuous_params = [
     "dropout_rate",
