@@ -1,4 +1,6 @@
 """
+fourier_far_field_modes.py
+
 Standalone script that imports lanternfiber.py, generates LP near-field modes,
 then Fourier transforms them to get far-field modes.
 
@@ -144,7 +146,7 @@ def plot_far_field_mode(far_field, title="", outpath=None, log_intensity=True):
 
 def main():
     # Change this to the folder where you want the far-field plots saved.
-    outdir = "./far_field_modes"
+    outdir = "/home/manav//PL-NN-testdata_forDec2025/far_field_modes"
     os.makedirs(outdir, exist_ok=True)
 
     # Use the same fibre parameters that you used for your near-field modes.
@@ -180,11 +182,21 @@ def main():
         else:
             label = f"mode_{mode_num}"
 
-        outfile = os.path.join(outdir, f"far_field_{mode_num:02d}_{label}.png")
+        # Include the LP l,m values in the title and filename when available.
+        if hasattr(lf, "lp_mode_list") and mode_num < len(lf.lp_mode_list):
+            l_val, m_val = lf.lp_mode_list[mode_num]
+            title = f"{label} far field, l={l_val}, m={m_val}"
+            outfile = os.path.join(
+                outdir,
+                f"far_field_{mode_num:02d}_{label}_l{l_val}_m{m_val}.png"
+            )
+        else:
+            title = f"{label} far field"
+            outfile = os.path.join(outdir, f"far_field_{mode_num:02d}_{label}.png")
 
         plot_far_field_mode(
             far_field,
-            title=f"{label} far field",
+            title=title,
             outpath=outfile,
             log_intensity=True
         )
