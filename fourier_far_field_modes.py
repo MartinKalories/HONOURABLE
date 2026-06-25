@@ -115,6 +115,14 @@ def plot_far_field_mode(far_field, title="", outpath=None, log_intensity=True):
     plt.figure(figsize=(10, 4))
 
     plt.subplot(1, 2, 1)
+    zoom_pixels = 80   # increase for less zoom, decrease for more zoom
+
+    cy, cx = np.array(phase.shape) // 2
+
+    phase_zoom = phase[
+        cy - zoom_pixels: cy + zoom_pixels,
+        cx - zoom_pixels: cx + zoom_pixels
+    ]
     if log_intensity:
         # Small floor avoids log10(0)
         im = np.log10(intensity / np.max(intensity) + 1e-12)
