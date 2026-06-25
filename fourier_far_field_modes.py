@@ -104,46 +104,55 @@ def make_all_far_field_modes(lf, pad_factor=1, normtosum=True):
     return far_fields
 
 
-def plot_far_field_mode(far_field, title="", outpath=None, log_intensity=True):
+def plot_far_field_mode(
+    far_field,
+    title="",
+    outpath=None,
+    log_intensity=True,
+    zoom_pixels=80
+):
     """
-    Plot far-field intensity and phase.
+    Plot zoomed far-field intensity and zoomed far-field phase.
     """
 
     intensity = np.abs(far_field) ** 2
     phase = np.angle(far_field)
 
+    # Centre pixel of the image
+    cy, cx = np.array(intensity.shape) // 2
+
+    # Crop intensity and phase around the centre
+    intensity_zoom = intensity[
+        cy - zoom_pixels: cy + zoom_pixels,
+        cx - zoom_pixels: cx + zoom_pixels
+    ]
+
+    phase_zoom = phase[
+        cy - zoom_pixels: cy + zoom_pixels,
+        cx - zoom_pixels: cx + zoom_pixels
+    ]
+
     plt.figure(figsize=(10, 4))
 
+    # -------------------------------------------------
+    # Zoomed intensity plot
+    # -------------------------------------------------
     plt.subplot(1, 2, 1)
-    zoom_pixels = 80   # increase for less zoom, decrease for more zoom
 
-    cy, cx = np.array(phase.shape) // 2
-
-    phase_zoom = phase[
-        cy - zoom_pixels: cy + zoom_pixels,
-        cx - zoom_pixels: cx + zoom_pixels
-    ]
     if log_intensity:
-        # Small floor avoids log10(0)
-        im = np.log10(intensity / np.max(intensity) + 1e-12)
+        im = np.log10(intensity_zoom / np.max(intensity_zoom) + 1e-12)
         plt.imshow(im, cmap="inferno")
-        plt.title("Far-field log intensity")
+        plt.title("Far-field log intensity, centre zoom")
     else:
-        plt.imshow(intensity, cmap="inferno")
-        plt.title("Far-field intensity")
+        plt.imshow(intensity_zoom, cmap="inferno")
+        plt.title("Far-field intensity, centre zoom")
+
     plt.colorbar()
 
+    # -------------------------------------------------
+    # Zoomed phase plot
+    # -------------------------------------------------
     plt.subplot(1, 2, 2)
-
-# Crop/zoom into the centre of the phase image
-    zoom_pixels = 80   # increase for less zoom, decrease for more zoom
-
-    cy, cx = np.array(phase.shape) // 2
-
-    phase_zoom = phase[
-        cy - zoom_pixels: cy + zoom_pixels,
-        cx - zoom_pixels: cx + zoom_pixels
-    ]
 
     plt.imshow(
         phase_zoom,
