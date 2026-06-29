@@ -134,6 +134,114 @@ def plot_far_field_mode(
 
     plt.figure(figsize=(10, 4))
 
+    def plot_all_far_field_modes_grid(
+    far_fields,
+    labels=None,
+    lm_values=None,
+    outpath=None,
+    log_intensity=False,
+    zoom_pixels=None
+):
+    """
+    Plot all far-field modes in one figure.
+
+    Top row    = intensity
+    Bottom row = phase
+
+    Each column corresponds to one mode.
+    """
+
+    n_modes = len(far_fields)
+
+    fig, axes = plt.subplots(
+        2, n_modes,
+        figsize=(3 * n_modes, 6),
+        squeeze=False
+    )
+
+    for i, far_field in enumerate(far_fields):
+        intensity = np.abs(far_field) ** 2
+        phase = np.angle(far_field)
+
+        if zoom_pixels is not None:
+            cy, cx = np.array(intensity.shape) // 2
+
+            intensity = intensity[
+                cy - zoom_pixels: cy + zoom_pixels,
+                cx - zoom_pixels: cx + zoom_pixels
+            ]
+
+            phase = phase[
+                cy - zoom_pixels: cy + zoom_pixels,
+                cx - zoom_pixels: cx + zoom_pixels
+            ]
+
+        # Make label
+        if labels is not None and i < len(labels):
+            mode_label = labels[i]
+        else:
+            mode_label = f"Mode {i}"
+
+        if lm_values is not None and i < len(lm_values):
+            l_val, m_val = lm_values[i]
+            title = f"{mode_label}\nl={l_val}, m={m_val}"
+        else:
+            title = mode_label
+
+        # -------------------------
+        # Top row: intensity
+        # -------------------------
+        ax_top = axes[0, i]
+
+        if log_intensity:
+            im_top = ax_top.imshow(
+                np.log10(intensity / np.max(intensity) + 1e-12),
+                cmap="inferno"
+            )
+            ax_top.set_title(title, fontsize=10)
+        else:
+            im_top = ax_top.imshow(intensity, cmap="inferno")
+            ax_top.set_title(title, fontsize=10)
+
+        ax_top.set_xticks([])
+        ax_top.set_yticks([])
+
+        # -------------------------
+        # Bottom row: phase
+        # -------------------------
+        ax_bot = axes[1, i]
+        im_bot = ax_bot.imshow(
+            phase,
+            cmap="twilight",
+            vmin=-np.pi,
+            vmax=np.pi
+        )
+
+        ax_bot.set_xticks([])
+        ax_bot.set_yticks([])
+
+    # Row labels
+    axes[0, 0].set_ylabel("Intensity", fontsize=12)
+    axes[1, 0].set_ylabel("Phase", fontsize=12)
+
+    # Colorbars
+    cbar1 = fig.colorbar(im_top, ax=axes[0, :], shrink=0.8, location="right")
+    if log_intensity:
+        cbar1.set_label("log10 relative intensity")
+    else:
+        cbar1.set_label("intensity")
+
+    cbar2 = fig.colorbar(im_bot, ax=axes[1, :], shrink=0.8, location="right")
+    cbar2.set_label("phase [rad]")
+
+    plt.tight_layout()
+
+    if outpath is not None:
+        plt.savefig(outpath, dpi=300, bbox_inches="tight")
+        plt.close()
+    else:
+        plt.show()
+
     # -------------------------------------------------
     # Zoomed intensity plot
     # -------------------------------------------------
@@ -208,7 +316,27 @@ def main():
         pad_factor=2,
         normtosum=True
     )
+        # Build l,m list for titles
+    lm_values = []
+    for mode_num in range(len(far_fields)):
+        if hasattr(lf, "lp_mode_list") and mode_num < len(lf.lp_mode_list):
+            lm_values.append(lf.lp_mode_list[mode_num])
+        else:
+            lm_values.append((None, None))
 
+    # Save all modes in one big figure
+    all_modes_plot_path = os.path.join(outdir, "all_far_field_modes_grid.png")
+
+    plot_all_far_field_modes_grid(
+        far_fields=far_fields,
+        labels=lf.modelabels,
+        lm_values=lm_values,
+        outpath=all_modes_plot_path,
+        log_intensity=False,   # change to True if you want log intensity
+        zoom_pixels=80         # or None for full image
+    )
+
+    print(f"Saved combined grid to {all_modes_plot_path}")
     # Save all far-field plots.
     for mode_num, far_field in enumerate(far_fields):
         if mode_num < len(lf.modelabels):
