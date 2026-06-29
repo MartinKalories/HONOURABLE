@@ -180,27 +180,42 @@ def plot_all_far_field_modes_grid(
     lm_values=None,
     outpath=None,
     log_intensity=False,
-    zoom_pixels=None
+    zoom_pixels=None,
+    modes_per_row=5
 ):
     """
-    Plot all far-field modes in one figure.
+    Plot all far-field modes in a wrapped grid.
 
-    Top row    = intensity
-    Bottom row = phase
+    For each block:
+        top row    = intensity
+        bottom row = phase
 
-    Each column corresponds to one mode.
+    modes_per_row controls how many modes appear before wrapping.
     """
 
     n_modes = len(far_fields)
 
+    n_blocks = int(np.ceil(n_modes / modes_per_row))
+    n_rows = 2 * n_blocks
+    n_cols = modes_per_row
+
     fig, axes = plt.subplots(
-        2,
-        n_modes,
-        figsize=(3 * n_modes, 6),
+        n_rows,
+        n_cols,
+        figsize=(3 * n_cols, 5 * n_blocks),
         squeeze=False
     )
 
+    im_top = None
+    im_bot = None
+
     for i, far_field in enumerate(far_fields):
+        block = i // modes_per_row
+        col = i % modes_per_row
+
+        intensity_row = 2 * block
+        phase_row = 2 * block + 1
+
         intensity = np.abs(far_field) ** 2
         phase = np.angle(far_field)
 
@@ -217,7 +232,7 @@ def plot_all_far_field_modes_grid(
                 cx - zoom_pixels: cx + zoom_pixels
             ]
 
-        # Make label
+        # Make title label
         if labels is not None and i < len(labels):
             mode_label = labels[i]
         else:
@@ -230,9 +245,9 @@ def plot_all_far_field_modes_grid(
             title = mode_label
 
         # -------------------------
-        # Top row: intensity
+        # Intensity plot
         # -------------------------
-        ax_top = axes[0, i]
+        ax_top = axes[intensity_row, col]
 
         if log_intensity:
             im_top = ax_top.imshow(
@@ -246,10 +261,13 @@ def plot_all_far_field_modes_grid(
         ax_top.set_xticks([])
         ax_top.set_yticks([])
 
+        if col == 0:
+            ax_top.set_ylabel("Intensity", fontsize=12)
+
         # -------------------------
-        # Bottom row: phase
+        # Phase plot
         # -------------------------
-        ax_bot = axes[1, i]
+        ax_bot = axes[phase_row, col]
 
         im_bot = ax_bot.imshow(
             phase,
@@ -261,20 +279,29 @@ def plot_all_far_field_modes_grid(
         ax_bot.set_xticks([])
         ax_bot.set_yticks([])
 
-    # Row labels
-    axes[0, 0].set_ylabel("Intensity", fontsize=12)
-    axes[1, 0].set_ylabel("Phase", fontsize=12)
+        if col == 0:
+            ax_bot.set_ylabel("Phase", fontsize=12)
+
+    # Hide unused empty axes at the end
+    for j in range(n_modes, n_blocks * modes_per_row):
+        block = j // modes_per_row
+        col = j % modes_per_row
+
+        axes[2 * block, col].axis("off")
+        axes[2 * block + 1, col].axis("off")
 
     # Colourbars
-    cbar1 = fig.colorbar(im_top, ax=axes[0, :], shrink=0.8, location="right")
+    if im_top is not None:
+        cbar1 = fig.colorbar(im_top, ax=axes[0::2, :], shrink=0.8)
 
-    if log_intensity:
-        cbar1.set_label("log10 relative intensity")
-    else:
-        cbar1.set_label("intensity")
+        if log_intensity:
+            cbar1.set_label("log10 relative intensity")
+        else:
+            cbar1.set_label("intensity")
 
-    cbar2 = fig.colorbar(im_bot, ax=axes[1, :], shrink=0.8, location="right")
-    cbar2.set_label("phase [rad]")
+    if im_bot is not None:
+        cbar2 = fig.colorbar(im_bot, ax=axes[1::2, :], shrink=0.8)
+        cbar2.set_label("phase [rad]")
 
     plt.tight_layout()
 
@@ -283,7 +310,6 @@ def plot_all_far_field_modes_grid(
         plt.close()
     else:
         plt.show()
-
 
 # -------------------------------------------------------------------------
 # Main script
@@ -361,11 +387,14 @@ def main():
             title = f"{label} far field"
             outfile = os.path.join(outdir, f"far_field_{mode_num:02d}_{label}.png")
 
-        plot_far_field_mode(
-            far_field,
-            title=title,
-            outpath=outfile,
-            log_intensity=False
+        plot_all_far_field_modes_grid(
+            far_fields=far_fields,
+            labels=lf.modelabels,
+            lm_values=lm_values,
+            outpath=all_modes_plot_path,
+            log_intensity=False,
+            zoom_pixels=80,
+            modes_per_row=5
         )
 
         print(f"Saved {outfile}")
