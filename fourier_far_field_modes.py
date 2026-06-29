@@ -363,7 +363,8 @@ def main():
         lm_values=lm_values,
         outpath=all_modes_plot_path,
         log_intensity=False,   # change to True if you want log intensity
-        zoom_pixels=80         # or None for full image
+        zoom_pixels=80,
+        modes_per_row=5# or None for full image
     )
 
     print(f"Saved combined grid to {all_modes_plot_path}")
@@ -387,15 +388,14 @@ def main():
             title = f"{label} far field"
             outfile = os.path.join(outdir, f"far_field_{mode_num:02d}_{label}.png")
 
-        plot_all_far_field_modes_grid(
-            far_fields=far_fields,
-            labels=lf.modelabels,
-            lm_values=lm_values,
-            outpath=all_modes_plot_path,
+        plot_far_field_mode(
+            far_field,
+            title=title,
+            outpath=outfile,
             log_intensity=False,
-            zoom_pixels=80,
-            modes_per_row=5
+            zoom_pixels=80
         )
+
 
         print(f"Saved {outfile}")
 
