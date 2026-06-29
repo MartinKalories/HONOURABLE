@@ -363,8 +363,8 @@ def main():
         lm_values=lm_values,
         outpath=all_modes_plot_path,
         log_intensity=False,   # change to True if you want log intensity
-        zoom_pixels=80,
-        modes_per_row=5# or None for full image
+        zoom_pixels=80, # or None for full image
+        modes_per_row=10
     )
 
     print(f"Saved combined grid to {all_modes_plot_path}")
