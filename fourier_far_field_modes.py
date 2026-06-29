@@ -134,7 +134,47 @@ def plot_far_field_mode(
 
     plt.figure(figsize=(10, 4))
 
-    def plot_all_far_field_modes_grid(
+    # -------------------------------------------------
+    # Zoomed intensity plot
+    # -------------------------------------------------
+    plt.subplot(1, 2, 1)
+
+    if log_intensity:
+        im = np.log10(intensity_zoom / np.max(intensity_zoom) + 1e-12)
+        plt.imshow(im, cmap="inferno")
+        plt.title("Far-field log intensity, centre zoom")
+    else:
+        plt.imshow(intensity_zoom, cmap="inferno")
+        plt.title("Far-field intensity, centre zoom")
+
+    plt.colorbar()
+
+    # -------------------------------------------------
+    # Zoomed phase plot
+    # -------------------------------------------------
+    plt.subplot(1, 2, 2)
+
+    plt.imshow(
+        phase_zoom,
+        cmap="twilight",
+        vmin=-np.pi,
+        vmax=np.pi
+    )
+
+    plt.title("Far-field phase, centre zoom")
+    plt.colorbar()
+
+    plt.suptitle(title)
+    plt.tight_layout()
+
+    if outpath is not None:
+        plt.savefig(outpath, dpi=200)
+        plt.close()
+    else:
+        plt.show()
+
+
+def plot_all_far_field_modes_grid(
     far_fields,
     labels=None,
     lm_values=None,
@@ -154,7 +194,8 @@ def plot_far_field_mode(
     n_modes = len(far_fields)
 
     fig, axes = plt.subplots(
-        2, n_modes,
+        2,
+        n_modes,
         figsize=(3 * n_modes, 6),
         squeeze=False
     )
@@ -198,11 +239,10 @@ def plot_far_field_mode(
                 np.log10(intensity / np.max(intensity) + 1e-12),
                 cmap="inferno"
             )
-            ax_top.set_title(title, fontsize=10)
         else:
             im_top = ax_top.imshow(intensity, cmap="inferno")
-            ax_top.set_title(title, fontsize=10)
 
+        ax_top.set_title(title, fontsize=10)
         ax_top.set_xticks([])
         ax_top.set_yticks([])
 
@@ -210,6 +250,7 @@ def plot_far_field_mode(
         # Bottom row: phase
         # -------------------------
         ax_bot = axes[1, i]
+
         im_bot = ax_bot.imshow(
             phase,
             cmap="twilight",
@@ -224,8 +265,9 @@ def plot_far_field_mode(
     axes[0, 0].set_ylabel("Intensity", fontsize=12)
     axes[1, 0].set_ylabel("Phase", fontsize=12)
 
-    # Colorbars
+    # Colourbars
     cbar1 = fig.colorbar(im_top, ax=axes[0, :], shrink=0.8, location="right")
+
     if log_intensity:
         cbar1.set_label("log10 relative intensity")
     else:
@@ -238,45 +280,6 @@ def plot_far_field_mode(
 
     if outpath is not None:
         plt.savefig(outpath, dpi=300, bbox_inches="tight")
-        plt.close()
-    else:
-        plt.show()
-
-    # -------------------------------------------------
-    # Zoomed intensity plot
-    # -------------------------------------------------
-    plt.subplot(1, 2, 1)
-
-    if log_intensity:
-        im = np.log10(intensity_zoom / np.max(intensity_zoom) + 1e-12)
-        plt.imshow(im, cmap="inferno")
-        plt.title("Far-field log intensity, centre zoom")
-    else:
-        plt.imshow(intensity_zoom, cmap="inferno")
-        plt.title("Far-field intensity, centre zoom")
-
-    plt.colorbar()
-
-    # -------------------------------------------------
-    # Zoomed phase plot
-    # -------------------------------------------------
-    plt.subplot(1, 2, 2)
-
-    plt.imshow(
-        phase_zoom,
-        cmap="twilight",
-        vmin=-np.pi,
-        vmax=np.pi
-    )
-
-    plt.title("Far-field phase, centre zoom")
-    plt.colorbar()
-
-    plt.suptitle(title)
-    plt.tight_layout()
-
-    if outpath is not None:
-        plt.savefig(outpath, dpi=200)
         plt.close()
     else:
         plt.show()
@@ -316,7 +319,8 @@ def main():
         pad_factor=2,
         normtosum=True
     )
-        # Build l,m list for titles
+
+    # Build l,m list for titles
     lm_values = []
     for mode_num in range(len(far_fields)):
         if hasattr(lf, "lp_mode_list") and mode_num < len(lf.lp_mode_list):
@@ -337,7 +341,8 @@ def main():
     )
 
     print(f"Saved combined grid to {all_modes_plot_path}")
-    # Save all far-field plots.
+
+    # Save all individual far-field plots.
     for mode_num, far_field in enumerate(far_fields):
         if mode_num < len(lf.modelabels):
             label = lf.modelabels[mode_num]
