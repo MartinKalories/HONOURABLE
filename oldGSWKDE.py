@@ -15,7 +15,7 @@ from optim_space import space
 # File path
 # ==================================================
 DATA_DIR = Path("/home/manav/PL-NN-testdata_forDec2025/")
-DEFAULT_CSV = "bayesopt_current_nosub_noLW_more_epochs_cont_only_all_trials.csv"
+DEFAULT_CSV = "bayesopt_current_nosub_noLR_all_trials2_all_trials.csv"
 
 csv_path = DATA_DIR / DEFAULT_CSV
 df = pd.read_csv(csv_path)
@@ -85,7 +85,7 @@ loss = df[loss_col].to_numpy(dtype=float)
 # ==================================================
 # Output folder
 # ==================================================
-output_dir = csv_path.parent / f"KDE_{csv_path.stem}_plots"
+output_dir = csv_path.parent / f"KDE_{csv_path.stem}_plotsog"
 output_dir.mkdir(exist_ok=True)
 
 print("Plots will be saved to:", output_dir)
