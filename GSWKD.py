@@ -1578,6 +1578,15 @@ def save_best_trial_summary(df, csv_path):
     print(best_row.to_string(index=False))
     print("Best trial saved to:", output_path)
 
+def make_continuous_optimum_dict(optimum_transformed):
+    if optimum_transformed is None:
+        return None
+
+    return {
+        name: optimum_transformed[i]
+        for i, name in enumerate(continuous_params)
+    }
+
 
 # ==================================================
 # Run everything
