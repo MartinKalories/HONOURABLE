@@ -157,46 +157,74 @@ def kde_1d(x, w, grids=400, bw_method=None):
 
     except np.linalg.LinAlgError:
         return None, None
+MANUAL_BW = {
+    "ksz_psf": 0.15,
+    "ksz_wf": 0.15,
+
+    "nfilts_psf": 6.0,
+    "nfilts_wf": 6.0,
+    "nfilts_enc": 6.0,
+}
 
 
-def kde_2d(x, y, w, grids=200, bw_method=None):
+def get_bandwidth(values, var_name, d=1):
+    """
+    Returns the KDE bandwidth for one variable.
+
+    If var_name is in MANUAL_BW, it uses the manual value.
+    Otherwise it uses Scott's-rule style bandwidth.
+    """
+
+    values = np.asarray(values, dtype=float)
+
+    if var_name in MANUAL_BW:
+        return MANUAL_BW[var_name]
+
+    std = np.std(values, ddof=1)
+    n = len(values)
+
+    if std < 1e-12 or n <= 1:
+        return None
+
+    return std * n ** (-1 / (d + 4))
+
+def kde_2d(x, y, w, x_name=None, y_name=None, grids=200):
+    """
+    2D weighted KDE with separate bandwidths for x and y.
+
+    If x_name or y_name appears in MANUAL_BW, that manual bandwidth is used.
+    Otherwise Scott's-rule style bandwidth is used.
+    """
+
     x = np.asarray(x, dtype=float)
     y = np.asarray(y, dtype=float)
     w = np.asarray(w, dtype=float)
+
+    # Normalise weights
+    w = w / (np.sum(w) + 1e-12)
 
     xg = np.linspace(x.min(), x.max(), grids)
     yg = np.linspace(y.min(), y.max(), grids)
 
     X, Y = np.meshgrid(xg, yg)
 
-    if np.std(x) < 1e-12 or np.std(y) < 1e-12:
+    bw_x = get_bandwidth(x, x_name, d=2)
+    bw_y = get_bandwidth(y, y_name, d=2)
+
+    if bw_x is None or bw_y is None:
         return X, Y, None
 
-    try:
-        data = np.vstack([x, y])
+    Z = np.zeros_like(X, dtype=float)
 
-        kde = gaussian_kde(
-            data,
-            weights=w,
-            bw_method=bw_method,
-        )
+    for xi, yi, wi in zip(x, y, w):
+        Z += wi * np.exp(
+            -0.5 * (
+                ((X - xi) / bw_x) ** 2
+                + ((Y - yi) / bw_y) ** 2
+            )
+        ) / (2 * np.pi * bw_x * bw_y)
 
-        XY = np.vstack([X.ravel(), Y.ravel()])
-        Z = kde(XY).reshape(X.shape)
-
-        return X, Y, Z
-
-    except np.linalg.LinAlgError:
-        return X, Y, None
-        
-def make_continuous_optimum_dict(optimum_transformed):
-    if optimum_transformed is None:
-        return None
-
-    return {
-        name: optimum_transformed[i]
-        for i, name in enumerate(continuous_params)
-    }
+    return X, Y, Z
 
 
 # ==================================================
@@ -706,14 +734,12 @@ def plot_all_2d_kde_pairs(
 
         x_label = variable_info[col_x]["label"]
         y_label = variable_info[col_y]["label"]
-        bw = kde_bandwidth(
-            np.vstack([x, y]),
-            weights=weights,
-        )
+        bw_x = get_bandwidth(x, col_x, d=2)
+        bw_y = get_bandwidth(y, col_y, d=2)
 
-        if bw is not None:
-            bw_x_label = f"{bw[0]:.3g}"
-            bw_y_label = f"{bw[1]:.3g}"
+        if bw_x is not None and bw_y is not None:
+            bw_x_label = f"{bw_x:.3g}"
+            bw_y_label = f"{bw_y:.3g}"
 
             print(
                 f"2D KDE bandwidth for {x_label} vs {y_label}: "
@@ -727,6 +753,8 @@ def plot_all_2d_kde_pairs(
             x,
             y,
             weights,
+            x_name=col_x,
+            y_name=col_y,
             grids=grids,
         )
 
@@ -1128,6 +1156,8 @@ def plot_2d_kde_corner(
                 x,
                 y,
                 weights,
+                x_name=col_x,
+                y_name=col_y,
                 grids=grids,
             )
 
