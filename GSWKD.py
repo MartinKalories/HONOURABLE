@@ -85,7 +85,7 @@ loss = df[loss_col].to_numpy(dtype=float)
 # ==================================================
 # Output folder
 # ==================================================
-output_dir = csv_path.parent / f"KDE_{csv_path.stem}_plots"
+output_dir = csv_path.parent / f"KDE_{csv_path.stem}_plots_fixed_bw"
 output_dir.mkdir(exist_ok=True)
 
 print("Plots will be saved to:", output_dir)
