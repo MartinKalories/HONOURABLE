@@ -67,7 +67,7 @@ REMOVE_TARGET_PISTON = False   # if True, subtracts circular mean phase from eac
 CENTRE_CROP_PIXELS = None
 
 # Plotting.
-PLOT_CROP_PIXELS = 24          # centre crop shown in saved example plot. None shows full image.
+PLOT_CROP_PIXELS = 80         # centre crop shown in saved example plot. None shows full image.
 
 # Numerical stability.
 FIELD_EPS = 1e-12
