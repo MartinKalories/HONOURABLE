@@ -20,7 +20,7 @@ from scipy.ndimage import zoom
 
 from lanternfiber import lanternfiber
 
-
+from datetime import datetime
 # -------------------------------------------------------------------------
 # Default settings
 # -------------------------------------------------------------------------
@@ -625,6 +625,7 @@ def main():
     parser.add_argument("--wavefront-key", type=str, default=WAVEFRONT_KEY)
     parser.add_argument("--wavefront-file", type=str, default=WAVEFRONT_NPZ_FILENAME)
     args = parser.parse_args()
+    run_stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     n_modes = args.n_modes
     n_test = args.n_test
@@ -715,7 +716,7 @@ def main():
 
     results_path = os.path.join(
         OUTDIR,
-        f"WF_phase_farfieldLP_fit_results_{n_test}wfs_{n_modes}modes_{crop_label}.npz",
+        f"WF_phase_farfieldLP_fit_results_{n_test}wfs_{n_modes}modes_{crop_label}_{run_stamp}.npz",
     )
 
     np.savez_compressed(
@@ -741,7 +742,7 @@ def main():
 
     csv_path = os.path.join(
         OUTDIR,
-        f"WF_phase_farfieldLP_fit_summary_{n_test}wfs_{n_modes}modes_{crop_label}.csv",
+        f"WF_phase_farfieldLP_fit_summary_{n_test}wfs_{n_modes}modes_{crop_label}_{run_stamp}.csv",
     )
 
     summary = np.column_stack([
@@ -776,7 +777,7 @@ def main():
 
     example_plot_path = os.path.join(
         OUTDIR,
-        f"WF_phase_farfieldLP_fit_example_{n_modes}modes_{crop_label}.png",
+        f"WF_phase_farfieldLP_fit_example_{n_modes}modes_{crop_label}_{run_stamp}.png",
     )
 
     plot_phase_fit_example(
@@ -792,7 +793,7 @@ def main():
 
     coeff_plot_path = os.path.join(
         OUTDIR,
-        f"WF_phase_farfieldLP_fit_coeffs_example_{n_modes}modes_{crop_label}1.png",
+        f"WF_phase_farfieldLP_fit_coeffs_example_{n_modes}modes_{crop_label}_{run_stamp}.png",
     )
 
     save_coeff_plot(
