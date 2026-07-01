@@ -792,7 +792,7 @@ def main():
 
     coeff_plot_path = os.path.join(
         OUTDIR,
-        f"WF_phase_farfieldLP_fit_coeffs_example_{n_modes}modes_{crop_label}.png",
+        f"WF_phase_farfieldLP_fit_coeffs_example_{n_modes}modes_{crop_label}1.png",
     )
 
     save_coeff_plot(
