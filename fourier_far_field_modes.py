@@ -109,7 +109,7 @@ def plot_far_field_mode(
     title="",
     outpath=None,
     log_intensity=True,
-    zoom_pixels=25
+    zoom_pixels=24
 ):
     """
     Plot zoomed far-field intensity and zoomed far-field phase.
@@ -325,7 +325,7 @@ def main():
     lf = lanternfiber(
         n_core=1.45,
         n_cladding=1.44,
-        core_radius=25,      # microns
+        core_radius=32.8/2,      # microns
         wavelength=1.55,     # microns
         nmodes=19
     )
@@ -363,7 +363,7 @@ def main():
         lm_values=lm_values,
         outpath=all_modes_plot_path,
         log_intensity=False,   # change to True if you want log intensity
-        zoom_pixels=25, # or None for full image
+        zoom_pixels=24, # or None for full image
         modes_per_row=10
     )
 
@@ -393,7 +393,7 @@ def main():
             title=title,
             outpath=outfile,
             log_intensity=False,
-            zoom_pixels=25
+            zoom_pixels=24
         )
 
 
