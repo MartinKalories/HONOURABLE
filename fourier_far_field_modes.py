@@ -109,7 +109,7 @@ def plot_far_field_mode(
     title="",
     outpath=None,
     log_intensity=True,
-    zoom_pixels=20
+    zoom_pixels=25
 ):
     """
     Plot zoomed far-field intensity and zoomed far-field phase.
@@ -363,7 +363,7 @@ def main():
         lm_values=lm_values,
         outpath=all_modes_plot_path,
         log_intensity=False,   # change to True if you want log intensity
-        zoom_pixels=20, # or None for full image
+        zoom_pixels=25, # or None for full image
         modes_per_row=10
     )
 
@@ -393,7 +393,7 @@ def main():
             title=title,
             outpath=outfile,
             log_intensity=False,
-            zoom_pixels=20
+            zoom_pixels=25
         )
 
 
