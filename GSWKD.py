@@ -164,12 +164,12 @@ def kde_1d(x, w, grids=400, bw_method=None):
     except np.linalg.LinAlgError:
         return None, None
 MANUAL_BW = {
-    "ksz_psf": 0.2,
-    "ksz_wf": 0.2,
+    "ksz_psf": 0.15,
+    "ksz_wf": 0.15,
 
-    "nfilts_psf": 10.0,
-    "nfilts_wf": 10.0,
-    "nfilts_enc": 10.0,
+    "nfilts_psf": 6,
+    "nfilts_wf": 6,
+    "nfilts_enc": 6,
 }
 
 
