@@ -51,8 +51,8 @@ CORE_RADIUS = 32.8 / 2
 # LP-mode generation and fitting.
 N_MODES = 17
 N_TEST = 5
-NPIX = 300          # lanternfiber returns a 2*NPIX by 2*NPIX mode image
-MAX_R = 1           # outer calculation radius in units of the core radius
+NPIX = 200          # lanternfiber returns a 2*NPIX by 2*NPIX mode image
+MAX_R = 2           # outer calculation radius in units of the core radius
 PAD_FACTOR = 4      # zero-padding factor applied before the FFT
 MAX_NFEV = 1000
 N_RESTARTS = 3
