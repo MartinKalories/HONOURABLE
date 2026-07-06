@@ -969,7 +969,7 @@ def main() -> None:
     parser.add_argument(
         "--crop-pixels",
         type=int,
-        default=-1,
+        default=30,
         help="Half-width of centre crop for fitting; -1 means no crop.",
     )
     parser.add_argument(
