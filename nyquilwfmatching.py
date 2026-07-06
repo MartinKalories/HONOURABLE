@@ -88,7 +88,7 @@ REMOVE_TARGET_PISTON = False
 # Optional centre crop after each far-field mode has been mapped to the target
 # grid. crop_pixels is a half-width: 80 gives a 160 by 160 crop.
 CENTRE_CROP_PIXELS = None
-PLOT_CROP_PIXELS = 80
+PLOT_CROP_PIXELS = 100
 
 FIELD_EPS = 1e-12
 
