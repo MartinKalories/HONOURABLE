@@ -49,7 +49,7 @@ WAVELENGTH = 1.55
 CORE_RADIUS = 32.8 / 2
 
 # LP-mode generation and fitting.
-N_MODES = 10
+N_MODES = 17
 N_TEST = 5
 NPIX = 300          # lanternfiber returns a 2*NPIX by 2*NPIX mode image
 MAX_R = 1           # outer calculation radius in units of the core radius
