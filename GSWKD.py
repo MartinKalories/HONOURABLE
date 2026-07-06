@@ -10,7 +10,7 @@ from scipy.integrate import trapezoid
 from scipy.optimize import differential_evolution
 from skopt.space import Real, Integer, Categorical
 from optim_space import space
-
+from datetime import datetime
 # ==================================================
 # File path
 # ==================================================
@@ -85,9 +85,15 @@ loss = df[loss_col].to_numpy(dtype=float)
 # ==================================================
 # Output folder
 # ==================================================
-output_dir = csv_path.parent / f"KDE_{csv_path.stem}_plots_fixed_bw"
-output_dir.mkdir(exist_ok=True)
+# Timestamp for this run, for example: 20260706_183542
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
+output_dir = (
+    csv_path.parent
+    / f"KDE_{csv_path.stem}_plots_fixed_bw_{timestamp}"
+)
+
+output_dir.mkdir(parents=True, exist_ok=True)
 print("Plots will be saved to:", output_dir)
 
 
