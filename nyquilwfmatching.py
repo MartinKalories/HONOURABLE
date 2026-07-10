@@ -70,7 +70,7 @@ RNG_SEED = 42
 #
 # "custom":   maps the target image edges to +/- TARGET_FMAX_X and
 #             +/- TARGET_FMAX_Y, in cycles per micrometre.
-FOURIER_MAPPING_MODE = "fibre_na"
+FOURIER_MAPPING_MODE = "full_fft"
 TARGET_FMAX_X = None
 TARGET_FMAX_Y = None
 
