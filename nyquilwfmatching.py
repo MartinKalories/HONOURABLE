@@ -53,7 +53,7 @@ N_MODES = 17
 N_TEST = 5
 NPIX = 200          # lanternfiber returns a 2*NPIX by 2*NPIX mode image
 MAX_R = 2           # outer calculation radius in units of the core radius
-PAD_FACTOR = 8      # zero-padding factor applied before the FFT
+PAD_FACTOR = 16      # zero-padding factor applied before the FFT
 MAX_NFEV = 1000
 N_RESTARTS = 3
 RNG_SEED = 42
@@ -76,7 +76,7 @@ TARGET_FMAX_Y = None
 
 # Print and save one full-FFT diagnostic image with physical frequency axes.
 SAVE_FOURIER_DIAGNOSTIC = True
-DIAGNOSTIC_MODE_NUM = 0
+DIAGNOSTIC_MODE_NUM = 1
 
 # Warn when the near-field mode has appreciable amplitude at the array edge.
 EDGE_WARNING_RATIO = 1e-3
