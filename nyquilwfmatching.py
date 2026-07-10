@@ -402,7 +402,7 @@ def resolve_target_frequency_range(
         return None, None
 
     if mapping_mode == "fibre_na":
-        fmax = float(2*lf.NA / lf.wavelength)
+        fmax = float(lf.NA / lf.wavelength)
         return fmax, fmax
 
     if mapping_mode == "custom":
