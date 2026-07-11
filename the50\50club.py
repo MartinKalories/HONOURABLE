@@ -277,8 +277,8 @@ def update_live_plot():
 # Main optimisation loop
 # ------------------------------------------------------------
 def main():
-    n_optimisation_trials = 50
-    n_random_trials = 50
+    n_optimisation_trials = N_OPTIMISATION_TRIALS
+    n_random_trials = N_RANDOM_POST_TRIALS
 
     opt = load_checkpoint_if_available()
 
