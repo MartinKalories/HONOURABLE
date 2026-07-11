@@ -70,9 +70,9 @@ RNG_SEED = 42
 #
 # "custom":   maps the target image edges to +/- TARGET_FMAX_X and
 #             +/- TARGET_FMAX_Y, in cycles per micrometre.
-FOURIER_MAPPING_MODE = "fibre_na"
-TARGET_FMAX_X = None
-TARGET_FMAX_Y = None
+FOURIER_MAPPING_MODE = "custom"
+TARGET_FMAX_X = 0.07
+TARGET_FMAX_Y = 0.07
 
 # Print and save one full-FFT diagnostic image with physical frequency axes.
 SAVE_FOURIER_DIAGNOSTIC = True
