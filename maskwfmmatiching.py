@@ -1105,51 +1105,51 @@ def main() -> None:
     example_mask = None
 
     for index in range(n_test):
-    print(f"\nFitting wavefront {index + 1}/{n_test}")
+       print(f"\nFitting wavefront {index + 1}/{n_test}")
 
-    target_phase = prepare_target_phase(wavefronts[index])
+       target_phase = prepare_target_phase(wavefronts[index])
 
     # Fit uses the same centre crop as the modes, if enabled.
-    target_phase = centre_crop(target_phase, fit_crop_pixels)
+       target_phase = centre_crop(target_phase, fit_crop_pixels)
 
-    if PUPIL_RADIUS_PIXELS is None:
-        fit_mask = None
-    else:
-        fit_mask = make_circular_mask(
-            target_phase.shape,
-            radius_pixels=PUPIL_RADIUS_PIXELS,
-        )
+       if PUPIL_RADIUS_PIXELS is None:
+           fit_mask = None
+       else:
+           fit_mask = make_circular_mask(
+               target_phase.shape,
+               radius_pixels=PUPIL_RADIUS_PIXELS,
+           )
 
-    coeffs_fit, field_fit, phase_fit, phase_residual, rms_err, mae_err, res = (
-        fit_coeffs_to_target_phase(
-            mode_matrix=mode_matrix,
-            target_phase=target_phase,
-            fit_mask=fit_mask,
-            max_nfev=args.max_nfev,
-            n_restarts=args.n_restarts,
-            rng=rng,
-        )
-    )
+       coeffs_fit, field_fit, phase_fit, phase_residual, rms_err, mae_err, res = (
+           fit_coeffs_to_target_phase(
+               mode_matrix=mode_matrix,
+               target_phase=target_phase,
+               fit_mask=fit_mask,
+               max_nfev=args.max_nfev,
+               n_restarts=args.n_restarts,
+               rng=rng,
+           )
+       )
 
-    rms_phase_errors.append(rms_err)
-    mean_abs_phase_errors.append(mae_err)
-    costs.append(res.cost)
-    nfevs.append(res.nfev)
-    success_flags.append(res.success)
-    coeffs_all.append(coeffs_fit)
+       rms_phase_errors.append(rms_err)
+       mean_abs_phase_errors.append(mae_err)
+       costs.append(res.cost)
+       nfevs.append(res.nfev)
+       success_flags.append(res.success)
+       coeffs_all.append(coeffs_fit)
 
-    print("RMS wrapped phase error [rad]:", rms_err)
-    print("Mean absolute wrapped phase error [rad]:", mae_err)
-    print("Cost:", res.cost)
-    print("nfev:", res.nfev)
-    print("Success:", res.success)
+       print("RMS wrapped phase error [rad]:", rms_err)
+       print("Mean absolute wrapped phase error [rad]:", mae_err)
+       print("Cost:", res.cost)
+       print("nfev:", res.nfev)
+       print("Success:", res.success)
 
-    if index == 0:
-        example_target = target_phase
-        example_fit = phase_fit
-        example_residual = phase_residual
-        example_coeffs = coeffs_fit
-        example_mask = fit_mask
+       if index == 0:
+           example_target = target_phase
+           example_fit = phase_fit
+           example_residual = phase_residual
+           example_coeffs = coeffs_fit
+           example_mask = fit_mask
 
     rms_phase_errors = np.asarray(rms_phase_errors)
     mean_abs_phase_errors = np.asarray(mean_abs_phase_errors)
