@@ -160,6 +160,7 @@ def append_trial_to_csv(trial_entry, filename):
 
         row = {
             "trial": trial_entry["trial"],
+            "trial_type": trial_entry.get("trial_type", "bayesian"),
             "objective_val_loss": trial_entry["objective_val_loss"],
             "final_val_loss": trial_entry["final_val_loss"],
         }
