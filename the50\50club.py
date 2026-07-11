@@ -350,10 +350,6 @@ def main():
         while random_trials_completed < n_random_trials:
             x_random = all_random_points[random_trials_completed]
 
-        while random_trials_completed < n_random_trials:
-            # Returns a list containing one sampled point.
-            
-
             params = {
                 dim.name: make_json_safe(val)
                 for dim, val in zip(space, x_random)
