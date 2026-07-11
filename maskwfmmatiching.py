@@ -71,7 +71,7 @@ PUPIL_RADIUS_PIXELS = 30
 #
 # "custom":   maps the target image edges to +/- TARGET_FMAX_X and
 #             +/- TARGET_FMAX_Y, in cycles per micrometre.
-FOURIER_MAPPING_MODE = "custom"
+FOURIER_MAPPING_MODE = "fibre_na"
 TARGET_FMAX_X = 0.07
 TARGET_FMAX_Y = 0.07
 
