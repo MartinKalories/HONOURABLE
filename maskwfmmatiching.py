@@ -1257,7 +1257,7 @@ def main() -> None:
         phase_fit=example_fit,
         phase_residual=example_residual,
         title=(
-            f"Wavefront phase fit using {args.n_modes} far-field LP modes "
+            f"Wavefront phase fit using {args.n_modes} far-field LP modes, RMS: {np.mean(rms_phase_errors)}  "
             f"({mapping_label})"
         ),
         outpath=example_plot_path,
