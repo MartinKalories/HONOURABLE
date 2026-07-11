@@ -346,15 +346,12 @@ def main():
           random_state=random_rng,
         )
 
-while random_trials_completed < n_random_trials:
-    x_random = all_random_points[random_trials_completed]
+        while random_trials_completed < n_random_trials:
+            x_random = all_random_points[random_trials_completed]
 
         while random_trials_completed < n_random_trials:
             # Returns a list containing one sampled point.
-            x_random = space.rvs(
-                n_samples=1,
-                random_state=random_rng,
-            )[0]
+            
 
             params = {
                 dim.name: make_json_safe(val)
