@@ -1117,7 +1117,7 @@ def main() -> None:
             rng=rng,
         )
 
-         rms_phase_errors.append(rms_err)
+        rms_phase_errors.append(rms_err)
         mean_abs_phase_errors.append(mae_err)
         costs.append(res.cost)
         nfevs.append(res.nfev)
