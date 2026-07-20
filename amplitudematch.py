@@ -890,8 +890,7 @@ def fit_coeffs_to_target_phase(
         phase_residual,
         np.nan,
     )
-        rms_phase_error = float(np.sqrt(np.mean(phase_residual ** 2)))
-        mean_abs_phase_error = float(np.mean(np.abs(phase_residual)))
+       
 
     return (
         coeffs_fit,
@@ -1118,18 +1117,18 @@ def main() -> None:
             rng=rng,
         )
 
-        rms_phase_errors.append(rms_error)
-        mean_abs_phase_errors.append(mean_abs_error)
-        costs.append(result.cost)
-        nfevs.append(result.nfev)
-        success_flags.append(result.success)
+         rms_phase_errors.append(rms_err)
+        mean_abs_phase_errors.append(mae_err)
+        costs.append(res.cost)
+        nfevs.append(res.nfev)
+        success_flags.append(res.success)
         coeffs_all.append(coeffs_fit)
 
-        print("RMS wrapped phase error [rad]:", rms_error)
-        print("Mean absolute wrapped phase error [rad]:", mean_abs_error)
-        print("Cost:", result.cost)
-        print("nfev:", result.nfev)
-        print("Success:", result.success)
+        print("RMS wrapped phase error [rad]:", rms_err)
+        print("Mean absolute wrapped phase error [rad]:", mae_err)
+        print("Cost:", res.cost)
+        print("nfev:", res.nfev)
+        print("Success:", res.success)
 
         if index == 0:
             example_target = target_phase
