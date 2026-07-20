@@ -69,6 +69,7 @@ BASE_PDICT = {
     "lossFunc_wf": "mean_squared_error",
     "epochs": 50,
     "dropout_rate": 0.1,
+    "dropout_rate_enc": 0.1
     "dropout_rate_dense": 0.1,
     "dropout_rate_psf": 0.6,
     'ksz_enc': 7,
@@ -254,22 +255,22 @@ def build_model(pdict, Xndims, yndims_psf, yndims_wf):
     # Encoder
     model_enc = Conv2D(pdict['nfilts_enc'], (pdict['ksz_enc'], pdict['ksz_enc']),
                        activation=pdict['actFunc'], padding='same')(input_img)
-    model_enc = Dropout(pdict['dropout_rate'])(model_enc)
+    model_enc = Dropout(pdict['dropout_rate_enc'])(model_enc)
     model_enc = MaxPooling2D((2, 2), padding='same')(model_enc)
 
     model_enc = Conv2D(pdict['nfilts_enc'], (pdict['ksz_enc'], pdict['ksz_enc']),
                        activation=pdict['actFunc'], padding='same')(model_enc)
-    model_enc = Dropout(pdict['dropout_rate'])(model_enc)
+    model_enc = Dropout(pdict['dropout_rate_enc'])(model_enc)
     model_enc = MaxPooling2D((2, 2), padding='same')(model_enc)
 
     model_enc = Conv2D(pdict['nfilts_enc'], (pdict['ksz_enc'], pdict['ksz_enc']),
                        activation=pdict['actFunc'], padding='same')(model_enc)
-    model_enc = Dropout(pdict['dropout_rate'])(model_enc)
+    model_enc = Dropout(pdict['dropout_rate_enc'])(model_enc)
     model_enc = MaxPooling2D((2, 2), padding='same')(model_enc)
 
     model_enc = Conv2D(pdict['nfilts_enc'], (pdict['ksz_enc'], pdict['ksz_enc']),
                        activation=pdict['actFunc'], padding='same')(model_enc)
-    model_enc = Dropout(pdict['dropout_rate'])(model_enc)
+    model_enc = Dropout(pdict['dropout_rate_enc'])(model_enc)
     model_enc = MaxPooling2D((2, 2), padding='same')(model_enc)
 
     # Bottleneck
