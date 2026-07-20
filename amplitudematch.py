@@ -57,7 +57,7 @@ PAD_FACTOR = 1      # zero-padding factor applied before the FFT
 MAX_NFEV = 1000
 N_RESTARTS = 3
 RNG_SEED = 42
-AMPLITUDE_THRESHOLD = 0.05
+AMPLITUDE_THRESHOLD = 0.01
 # Fourier-grid mapping.
 #
 # "full_fft": reproduces the old behaviour by resizing the complete FFT range.
