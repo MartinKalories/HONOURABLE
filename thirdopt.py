@@ -69,7 +69,7 @@ BASE_PDICT = {
     "lossFunc_wf": "mean_squared_error",
     "epochs": 50,
     "dropout_rate": 0.1,
-    "dropout_rate_enc": 0.1
+    "dropout_rate_enc": 0.1,
     "dropout_rate_dense": 0.1,
     "dropout_rate_psf": 0.6,
     'ksz_enc': 7,
