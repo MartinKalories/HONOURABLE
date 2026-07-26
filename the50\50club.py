@@ -342,9 +342,9 @@ def main():
 
         random_rng = np.random.RandomState(12345)
 
-        all_random_points = space.rvs(
-          n_samples=n_random_trials,
-          random_state=random_rng,
+        all_random_points = opt.space.rvs(
+            n_samples=n_random_trials,
+            random_state=random_rng,
         )
 
         while random_trials_completed < n_random_trials:
