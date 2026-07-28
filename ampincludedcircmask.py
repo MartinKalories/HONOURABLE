@@ -933,51 +933,85 @@ def fit_coeffs_to_target_phase(
 # Plotting
 # -------------------------------------------------------------------------
 
-
 def plot_phase_fit_example(
     target_phase: np.ndarray,
-    phase_fit: np.ndarray,
+    target_amplitude: np.ndarray,
+    field_fit: np.ndarray,
     phase_residual: np.ndarray,
     title: str,
     outpath: str,
     plot_crop_pixels: Optional[int] = None,
     fit_mask=None,
 ) -> None:
-    """Save target, fitted and residual phase images."""
-    target_plot = centre_crop(target_phase, plot_crop_pixels)
-    fit_plot = centre_crop(phase_fit, plot_crop_pixels)
+    """Save target amplitude/phase and fitted amplitude/phase images."""
+
+    fit_amplitude = np.abs(field_fit)
+    phase_fit = np.angle(field_fit)
+
+    target_amp_plot = centre_crop(target_amplitude, plot_crop_pixels)
+    target_phase_plot = centre_crop(target_phase, plot_crop_pixels)
+    fit_amp_plot = centre_crop(fit_amplitude, plot_crop_pixels)
+    fit_phase_plot = centre_crop(phase_fit, plot_crop_pixels)
     residual_plot = centre_crop(phase_residual, plot_crop_pixels)
+
     if fit_mask is not None:
-      mask_plot = centre_crop(fit_mask, plot_crop_pixels)
+        mask_plot = centre_crop(fit_mask, plot_crop_pixels)
 
-      target_plot = np.where(mask_plot, target_plot, np.nan)
-      fit_plot = np.where(mask_plot, fit_plot, np.nan)
-      residual_plot = np.where(mask_plot, residual_plot, np.nan)
+        target_amp_plot = np.where(mask_plot, target_amp_plot, np.nan)
+        target_phase_plot = np.where(mask_plot, target_phase_plot, np.nan)
+        fit_amp_plot = np.where(mask_plot, fit_amp_plot, np.nan)
+        fit_phase_plot = np.where(mask_plot, fit_phase_plot, np.nan)
+        residual_plot = np.where(mask_plot, residual_plot, np.nan)
 
-    plt.figure(figsize=(10, 8))
+    plt.figure(figsize=(12, 9))
 
-    plt.subplot(2, 2, 1)
-    plt.imshow(target_amplitude, cmap="gray", origin="lower")
+    plt.subplot(2, 3, 1)
+    plt.imshow(target_amp_plot, cmap="gray", origin="lower")
     plt.title("Assumed target amplitude")
     plt.colorbar()
 
-    plt.subplot(2, 2, 2)
-    plt.imshow(target_phase, cmap="twilight", vmin=-np.pi, vmax=np.pi, origin="lower")
+    plt.subplot(2, 3, 2)
+    plt.imshow(
+        target_phase_plot,
+        cmap="twilight",
+        vmin=-np.pi,
+        vmax=np.pi,
+        origin="lower",
+    )
     plt.title("Measured target phase")
     plt.colorbar()
 
-    plt.subplot(2, 2, 3)
-    plt.imshow(np.abs(field_fit), cmap="gray", origin="lower")
+    plt.subplot(2, 3, 3)
+    plt.imshow(
+        residual_plot,
+        cmap="bwr",
+        vmin=-np.pi,
+        vmax=np.pi,
+        origin="lower",
+    )
+    plt.title("Wrapped phase residual")
+    plt.colorbar()
+
+    plt.subplot(2, 3, 4)
+    plt.imshow(fit_amp_plot, cmap="gray", origin="lower")
     plt.title("Fitted LP amplitude")
     plt.colorbar()
 
-    plt.subplot(2, 2, 4)
-    plt.imshow(phase_fit, cmap="twilight", vmin=-np.pi, vmax=np.pi, origin="lower")
+    plt.subplot(2, 3, 5)
+    plt.imshow(
+        fit_phase_plot,
+        cmap="twilight",
+        vmin=-np.pi,
+        vmax=np.pi,
+        origin="lower",
+    )
     plt.title("Fitted LP phase")
     plt.colorbar()
 
+    plt.suptitle(title)
     plt.tight_layout()
-    plt.show()
+    plt.savefig(outpath, dpi=300, bbox_inches="tight")
+    plt.close()
 
 
 def save_coeff_plot(
@@ -1127,7 +1161,8 @@ def main() -> None:
   
 
     example_target = None
-    example_fit = None
+    example_target_amplitude = None
+    example_field_fit = None
     example_residual = None
     example_coeffs = None
     example_mask = None
@@ -1139,13 +1174,12 @@ def main() -> None:
 
     # Fit uses the same centre crop as the modes, if enabled.
        target_phase = centre_crop(target_phase, fit_crop_pixels)
+
        target_amplitude, target_complex_wf = make_assumed_amplitude_wavefront(
-         target_phase,radius_pixels=PUPIL_RADIUS_PIXELS,
+           target_phase,
+           radius_pixels=PUPIL_RADIUS_PIXELS,
        )
 
-       fit_amplitude = np.abs(field_fit)
-       fit_complex_wf = field_fit
-      
        if PUPIL_RADIUS_PIXELS is None:
            fit_mask = None
        else:
@@ -1165,6 +1199,9 @@ def main() -> None:
            )
        )
 
+       fit_amplitude = np.abs(field_fit)
+       fit_complex_wf = field_fit
+
        rms_phase_errors.append(rms_err)
        mean_abs_phase_errors.append(mae_err)
        costs.append(res.cost)
@@ -1180,7 +1217,8 @@ def main() -> None:
 
        if index == 0:
            example_target = target_phase
-           example_fit = phase_fit
+           example_target_amplitude = target_amplitude
+           example_field_fit = field_fit
            example_residual = phase_residual
            example_coeffs = coeffs_fit
            example_mask = fit_mask
@@ -1287,17 +1325,19 @@ def main() -> None:
         f"{crop_label}_{mapping_label}_{run_stamp}.png",
     )
     plot_phase_fit_example(
-        target_phase=example_target,
-        phase_fit=example_fit,
-        phase_residual=example_residual,
-        title=(
-            f"Wavefront phase fit using {args.n_modes} far-field LP modes, RMS: {np.mean(rms_phase_errors)}  "
-            f"({mapping_label})"
-        ),
-        outpath=example_plot_path,
-        plot_crop_pixels=plot_crop_pixels,
-        fit_mask=example_mask,
-    )
+       target_phase=example_target,
+       target_amplitude=example_target_amplitude,
+       field_fit=example_field_fit,
+       phase_residual=example_residual,
+       title=(
+           f"Wavefront phase fit using {args.n_modes} far-field LP modes, "
+           f"mean RMS: {np.mean(rms_phase_errors):.3f} rad "
+           f"({mapping_label})"
+       ),
+       outpath=example_plot_path,
+       plot_crop_pixels=plot_crop_pixels,
+       fit_mask=example_mask,
+   )
     print("Saved example phase plot to:", example_plot_path)
 
     coeff_plot_path = os.path.join(
