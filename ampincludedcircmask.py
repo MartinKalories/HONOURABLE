@@ -947,11 +947,12 @@ def plot_phase_fit_example(
 
     fit_amplitude = np.abs(field_fit)
     phase_fit = np.angle(field_fit)
-
+    amplitude_residual = target_amplitude - fit_amplitude_norm
     target_amp_plot = centre_crop(target_amplitude, plot_crop_pixels)
     target_phase_plot = centre_crop(target_phase, plot_crop_pixels)
     fit_amp_plot = centre_crop(fit_amplitude, plot_crop_pixels)
     fit_phase_plot = centre_crop(phase_fit, plot_crop_pixels)
+    amplitude_residual_plot = centre_crop(amplitude_residual, plot_crop_pixels)
     residual_plot = centre_crop(phase_residual, plot_crop_pixels)
 
     if fit_mask is not None:
@@ -981,7 +982,18 @@ def plot_phase_fit_example(
     plt.title("Measured target phase")
     plt.colorbar()
 
-    plt.subplot(2, 3, 3)
+   plt.subplot(2, 3, 3)
+    plt.imshow(
+        amplitude_residual_plot,
+        cmap="bwr",
+        origin="lower",
+        vmin=-1,
+        vmax=1,
+    )
+    plt.title("Amplitude residual")
+    plt.colorbar()
+
+    plt.subplot(2, 3, 6)
     plt.imshow(
         residual_plot,
         cmap="bwr",
