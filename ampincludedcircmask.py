@@ -943,17 +943,33 @@ def plot_phase_fit_example(
     plot_crop_pixels: Optional[int] = None,
     fit_mask=None,
 ) -> None:
-    """Save target amplitude/phase and fitted amplitude/phase images."""
+    """Save target/fitted amplitude, target/fitted phase, and residuals."""
 
     fit_amplitude = np.abs(field_fit)
     phase_fit = np.angle(field_fit)
+
+    # Normalise fitted amplitude so it can be compared visually
+    # with the assumed target amplitude, which is 0 or 1.
+    if fit_mask is not None:
+        valid_fit_amplitude = fit_amplitude[fit_mask]
+    else:
+        valid_fit_amplitude = fit_amplitude
+
+    max_fit_amplitude = np.nanmax(valid_fit_amplitude)
+
+    if max_fit_amplitude > 0:
+        fit_amplitude_norm = fit_amplitude / max_fit_amplitude
+    else:
+        fit_amplitude_norm = fit_amplitude
+
     amplitude_residual = target_amplitude - fit_amplitude_norm
+
     target_amp_plot = centre_crop(target_amplitude, plot_crop_pixels)
     target_phase_plot = centre_crop(target_phase, plot_crop_pixels)
-    fit_amp_plot = centre_crop(fit_amplitude, plot_crop_pixels)
+    fit_amp_plot = centre_crop(fit_amplitude_norm, plot_crop_pixels)
     fit_phase_plot = centre_crop(phase_fit, plot_crop_pixels)
     amplitude_residual_plot = centre_crop(amplitude_residual, plot_crop_pixels)
-    residual_plot = centre_crop(phase_residual, plot_crop_pixels)
+    phase_residual_plot = centre_crop(phase_residual, plot_crop_pixels)
 
     if fit_mask is not None:
         mask_plot = centre_crop(fit_mask, plot_crop_pixels)
@@ -962,12 +978,13 @@ def plot_phase_fit_example(
         target_phase_plot = np.where(mask_plot, target_phase_plot, np.nan)
         fit_amp_plot = np.where(mask_plot, fit_amp_plot, np.nan)
         fit_phase_plot = np.where(mask_plot, fit_phase_plot, np.nan)
-        residual_plot = np.where(mask_plot, residual_plot, np.nan)
+        amplitude_residual_plot = np.where(mask_plot, amplitude_residual_plot, np.nan)
+        phase_residual_plot = np.where(mask_plot, phase_residual_plot, np.nan)
 
-    plt.figure(figsize=(12, 9))
+    plt.figure(figsize=(14, 8))
 
     plt.subplot(2, 3, 1)
-    plt.imshow(target_amp_plot, cmap="gray", origin="lower")
+    plt.imshow(target_amp_plot, cmap="gray", origin="lower", vmin=0, vmax=1)
     plt.title("Assumed target amplitude")
     plt.colorbar()
 
@@ -982,7 +999,7 @@ def plot_phase_fit_example(
     plt.title("Measured target phase")
     plt.colorbar()
 
-   plt.subplot(2, 3, 3)
+    plt.subplot(2, 3, 3)
     plt.imshow(
         amplitude_residual_plot,
         cmap="bwr",
@@ -993,19 +1010,8 @@ def plot_phase_fit_example(
     plt.title("Amplitude residual")
     plt.colorbar()
 
-    plt.subplot(2, 3, 6)
-    plt.imshow(
-        residual_plot,
-        cmap="bwr",
-        vmin=-np.pi,
-        vmax=np.pi,
-        origin="lower",
-    )
-    plt.title("Wrapped phase residual")
-    plt.colorbar()
-
     plt.subplot(2, 3, 4)
-    plt.imshow(fit_amp_plot, cmap="gray", origin="lower")
+    plt.imshow(fit_amp_plot, cmap="gray", origin="lower", vmin=0, vmax=1)
     plt.title("Fitted LP amplitude")
     plt.colorbar()
 
@@ -1018,6 +1024,17 @@ def plot_phase_fit_example(
         origin="lower",
     )
     plt.title("Fitted LP phase")
+    plt.colorbar()
+
+    plt.subplot(2, 3, 6)
+    plt.imshow(
+        phase_residual_plot,
+        cmap="bwr",
+        vmin=-np.pi,
+        vmax=np.pi,
+        origin="lower",
+    )
+    plt.title("Wrapped phase residual")
     plt.colorbar()
 
     plt.suptitle(title)
