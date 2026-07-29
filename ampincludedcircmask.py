@@ -984,7 +984,7 @@ def plot_phase_fit_example(
     plt.figure(figsize=(14, 8))
 
     plt.subplot(2, 3, 1)
-    plt.imshow(target_amp_plot, cmap="gray", origin="lower", vmin=0, vmax=1)
+    plt.imshow(target_amp_plot, cmap="gray_r", origin="lower", vmin=0, vmax=1)
     plt.title("Assumed target amplitude")
     plt.colorbar()
 
@@ -1011,7 +1011,7 @@ def plot_phase_fit_example(
     plt.colorbar()
 
     plt.subplot(2, 3, 4)
-    plt.imshow(fit_amp_plot, cmap="gray", origin="lower", vmin=0, vmax=1)
+    plt.imshow(fit_amp_plot, cmap="gray_r", origin="lower", vmin=0, vmax=1)
     plt.title("Fitted LP amplitude")
     plt.colorbar()
 
