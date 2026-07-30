@@ -30,7 +30,7 @@ loss_col = "objective_val_loss"
 
 # Lower T makes only the best trials matter strongly.
 # Higher T gives smoother weighting across more trials.
-T = 1000
+T = 0.001
 
 active_dims = [dim for dim in space if dim.name is not None]
 
@@ -236,7 +236,7 @@ def kde_2d(x, y, w, x_name=None, y_name=None, grids=200):
 # ==================================================
 # Find continuous 5D KDE optimum
 # ==================================================
-def find_5d_kde_optimum(df, loss, csv_path, T=0.1, bw_method=None):
+def find_5d_kde_optimum(df, loss, csv_path, T, bw_method=None):
     samples_5d = make_continuous_samples(df)
 
     goodness_5d = np.exp(-(loss - loss.min()) / T)
