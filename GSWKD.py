@@ -167,9 +167,9 @@ MANUAL_BW = {
     "ksz_psf": 0.15,
     "ksz_wf": 0.15,
 
-    "nfilts_psf": 16,
-    "nfilts_wf": 16,
-    "nfilts_enc": 16,
+    "nfilts_psf": 32,
+    "nfilts_wf": 32,
+    "nfilts_enc": 32,
 }
 
 
