@@ -30,7 +30,7 @@ loss_col = "objective_val_loss"
 
 # Lower T makes only the best trials matter strongly.
 # Higher T gives smoother weighting across more trials.
-T = 10
+T = 1000
 
 active_dims = [dim for dim in space if dim.name is not None]
 
