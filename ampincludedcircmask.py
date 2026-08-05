@@ -34,7 +34,8 @@ from lanternfiber import lanternfiber
 # Default settings
 # -------------------------------------------------------------------------
 
-DATADIR = "/home/manav//PL-NN-testdata_forDec2025/"
+#DATADIR = "/home/manav//PL-NN-testdata_forDec2025/"
+DATADIR = '/Users/manavkalra/Downloads/PL-NN-testdata_forDec2025/'
 OUTDIR = DATADIR
 
 WAVEFRONT_NPZ_FILENAME = (
@@ -51,13 +52,13 @@ CORE_RADIUS = 32.8 / 2
 # LP-mode generation and fitting.
 N_MODES = 17
 N_TEST = 5
-NPIX = 300          # lanternfiber returns a 2*NPIX by 2*NPIX mode image
+NPIX = 256          # lanternfiber returns a 2*NPIX by 2*NPIX mode image
 MAX_R = 3           # outer calculation radius in units of the core radius
 PAD_FACTOR = 4    # zero-padding factor applied before the FFT
 MAX_NFEV = 1000
 N_RESTARTS = 3
 RNG_SEED = 42
-PUPIL_RADIUS_PIXELS = 30
+PUPIL_RADIUS_PIXELS = 31
 
 # Fourier-grid mapping.
 #
@@ -71,9 +72,9 @@ PUPIL_RADIUS_PIXELS = 30
 #
 # "custom":   maps the target image edges to +/- TARGET_FMAX_X and
 #             +/- TARGET_FMAX_Y, in cycles per micrometre.
-FOURIER_MAPPING_MODE = "fibre_na"
-TARGET_FMAX_X = 0.07
-TARGET_FMAX_Y = 0.07
+FOURIER_MAPPING_MODE = "custom"
+TARGET_FMAX_X = 0.11
+TARGET_FMAX_Y = 0.11
 
 # Print and save one full-FFT diagnostic image with physical frequency axes.
 SAVE_FOURIER_DIAGNOSTIC = True
@@ -1203,6 +1204,8 @@ def main() -> None:
 
     # Fit uses the same centre crop as the modes, if enabled.
        target_phase = centre_crop(target_phase, fit_crop_pixels)
+       # Use the final/highest-index LP mode as the synthetic target.
+     
 
        target_amplitude, target_complex_wf = make_assumed_amplitude_wavefront(
            target_phase,
@@ -1227,6 +1230,28 @@ def main() -> None:
                rng=rng,
            )
        )
+       # ============================================================
+       # TEST: show only the largest/highest available LP mode
+       # Comment out this block to return to the normal fitted result.
+       # ============================================================
+
+       test_mode_index = 0
+
+       field_fit = far_modes[test_mode_index]
+       phase_fit = np.angle(field_fit)
+       phase_residual = wrap_phase(target_phase - phase_fit)
+
+       if fit_mask is None:
+        valid_residual = phase_residual.ravel()
+       else:
+         valid_residual = phase_residual[fit_mask]
+
+       rms_err = np.sqrt(np.mean(valid_residual ** 2))
+       mae_err = np.mean(np.abs(valid_residual))
+
+# Make the coefficient plot show only the selected mode.
+       coeffs_fit = np.zeros(args.n_modes, dtype=np.complex128)
+       coeffs_fit[test_mode_index] = 1.0
 
        fit_amplitude = np.abs(field_fit)
        fit_complex_wf = field_fit
