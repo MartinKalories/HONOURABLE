@@ -115,7 +115,7 @@ def plot_far_field_mode(
     Plot zoomed far-field intensity and zoomed far-field phase.
     """
 
-    intensity = np.abs(far_field) ** 2
+    intensity = np.abs(far_field) #** 2
     phase = np.angle(far_field)
 
     # Centre pixel of the image
