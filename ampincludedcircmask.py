@@ -51,7 +51,7 @@ CORE_RADIUS = 32.8 / 2
 
 # LP-mode generation and fitting.
 N_MODES = 17
-N_TEST = 5
+N_TEST = 100
 NPIX = 256          # lanternfiber returns a 2*NPIX by 2*NPIX mode image
 MAX_R = 3           # outer calculation radius in units of the core radius
 PAD_FACTOR = 4    # zero-padding factor applied before the FFT
@@ -73,8 +73,8 @@ PUPIL_RADIUS_PIXELS = 31
 # "custom":   maps the target image edges to +/- TARGET_FMAX_X and
 #             +/- TARGET_FMAX_Y, in cycles per micrometre.
 FOURIER_MAPPING_MODE = "custom"
-TARGET_FMAX_X = 0.11
-TARGET_FMAX_Y = 0.11
+TARGET_FMAX_X = 0.105
+TARGET_FMAX_Y = 0.105
 
 # Print and save one full-FFT diagnostic image with physical frequency axes.
 SAVE_FOURIER_DIAGNOSTIC = True
@@ -851,6 +851,7 @@ def unpack_coeffs(z: np.ndarray, n_modes: int) -> np.ndarray:
 def fit_coeffs_to_target_phase(
     mode_matrix: np.ndarray,
     target_phase: np.ndarray,
+    target_complex_wf: np.ndarray,
     fit_mask=None,
     max_nfev: int = 1000,
     n_restarts: int = 3,
@@ -863,7 +864,10 @@ def fit_coeffs_to_target_phase(
     M = np.asarray(mode_matrix, dtype=np.complex128)
     n_modes = M.shape[1]
     target_phase = wrap_phase(target_phase)
-    target_unit = np.exp(1j * target_phase).reshape(-1)
+    target_complex_wf = np.asarray(
+        target_complex_wf,
+        dtype=np.complex128,
+    )
 
     if fit_mask is None:
         fit_mask = np.ones(target_phase.shape, dtype=bool)
@@ -876,19 +880,27 @@ def fit_coeffs_to_target_phase(
             f"target_phase shape {target_phase.shape}"
         )
 
+    if target_complex_wf.shape != target_phase.shape:
+        raise ValueError(
+            f"target_complex_wf shape {target_complex_wf.shape} does not match "
+            f"target_phase shape {target_phase.shape}"
+        )
+
     fit_mask_flat = fit_mask.reshape(-1)
 
-    if M.shape[0] != target_unit.size:
+    target_complex_norm = normalise_power(target_complex_wf)
+    target_flat = target_complex_norm.reshape(-1)
+
+    if M.shape[0] != target_flat.size:
         raise ValueError(
             f"Mode matrix has {M.shape[0]} pixels, but target has "
-            f"{target_unit.size}."
+            f"{target_flat.size}."
         )
 
     def residual(z: np.ndarray) -> np.ndarray:
         coeffs = unpack_coeffs(z, n_modes)
         field_flat = M @ coeffs
-        fit_unit = field_flat / (np.abs(field_flat) + FIELD_EPS)
-        difference = fit_unit[fit_mask_flat] - target_unit[fit_mask_flat]
+        difference = field_flat[fit_mask_flat] - target_flat[fit_mask_flat]
         return np.concatenate([difference.real, difference.imag])
 
     best_result = None
@@ -1223,6 +1235,7 @@ def main() -> None:
        coeffs_fit, field_fit, phase_fit, phase_residual, rms_err, mae_err, res = (
            fit_coeffs_to_target_phase(
                mode_matrix=mode_matrix,
+               target_complex_wf=target_complex_wf,
                target_phase=target_phase,
                fit_mask=fit_mask,
                max_nfev=args.max_nfev,
@@ -1235,23 +1248,23 @@ def main() -> None:
        # Comment out this block to return to the normal fitted result.
        # ============================================================
 
-       test_mode_index = 0
+       #test_mode_index = 0
 
-       field_fit = far_modes[test_mode_index]
-       phase_fit = np.angle(field_fit)
-       phase_residual = wrap_phase(target_phase - phase_fit)
+       #field_fit = far_modes[test_mode_index]
+       #phase_fit = np.angle(field_fit)
+       #phase_residual = wrap_phase(target_phase - phase_fit)
 
-       if fit_mask is None:
-        valid_residual = phase_residual.ravel()
-       else:
-         valid_residual = phase_residual[fit_mask]
+       #if fit_mask is None:
+        #valid_residual = phase_residual.ravel()
+       #else:
+         #valid_residual = phase_residual[fit_mask]
 
-       rms_err = np.sqrt(np.mean(valid_residual ** 2))
-       mae_err = np.mean(np.abs(valid_residual))
+       #rms_err = np.sqrt(np.mean(valid_residual ** 2))
+       #mae_err = np.mean(np.abs(valid_residual))
 
 # Make the coefficient plot show only the selected mode.
-       coeffs_fit = np.zeros(args.n_modes, dtype=np.complex128)
-       coeffs_fit[test_mode_index] = 1.0
+       #coeffs_fit = np.zeros(args.n_modes, dtype=np.complex128)
+       #coeffs_fit[test_mode_index] = 1.0
 
        fit_amplitude = np.abs(field_fit)
        fit_complex_wf = field_fit
