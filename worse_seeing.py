@@ -34,9 +34,9 @@ outdir = datadir
 
 save_filename_pref = 'pl2wf2psf_data202407_model01_'
 
-load_precombined_PLims_filename = 'pllabdata_20240605_singlepsf_01_slmcube_20240605_seeing_0.4-10-scl0.5_rand_10K_01_proc2_files-combined-PSFs'
-precombined_psf_filename = None
-load_precombined_wfims_filename = 'pllabdata_20240605_singlepsf_01_slmcube_20240605_seeing_0.4-10-scl0.5_rand_10K_01_proc2_files-combined'
+load_precombined_PLims_filename = 'pllabdata_20240605_singlepsf_01_slmcube_20240605_seeing_0.4-10-scl0.5_rand_10K_01_proc2_files-combined'
+precombined_psf_filename = 'pllabdata_20240605_singlepsf_01_slmcube_20240605_seeing_0.4-10-scl0.5_rand_10K_01_proc2_files-combined-PSFs'
+load_precombined_wfims_filename = 'slmcube_20240605_seeing_0.4-10-scl0.5_rand_10K_01_files-64px_combined'
 
 addnoise_PL = None
 addnoise_PSF = None
