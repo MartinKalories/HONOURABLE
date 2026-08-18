@@ -25,7 +25,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 from scipy.ndimage import zoom
-from scipy.optimize import least_squares
+
 
 from lanternfiber import lanternfiber
 
@@ -51,13 +51,10 @@ CORE_RADIUS = 32.8 / 2
 
 # LP-mode generation and fitting.
 N_MODES = 17
-N_TEST = 100
+N_TEST = 1000
 NPIX = 256          # lanternfiber returns a 2*NPIX by 2*NPIX mode image
 MAX_R = 3           # outer calculation radius in units of the core radius
-PAD_FACTOR = 4    # zero-padding factor applied before the FFT
-MAX_NFEV = 1000
-N_RESTARTS = 3
-RNG_SEED = 42
+PAD_FACTOR = 1   # zero-padding factor applied before the FFT
 PUPIL_RADIUS_PIXELS = 31
 
 # Fourier-grid mapping.
@@ -839,97 +836,65 @@ def make_farfield_lp_modes(
 # -------------------------------------------------------------------------
 
 
-def unpack_coeffs(z: np.ndarray, n_modes: int) -> np.ndarray:
-    """Convert a real optimisation vector into normalised complex coefficients."""
-    coeffs = z[:n_modes] + 1j * z[n_modes:]
-    norm = np.sqrt(np.sum(np.abs(coeffs) ** 2))
-    if norm > 0:
-        coeffs = coeffs / norm
-    return coeffs
-
-
-def fit_coeffs_to_target_phase(
-    mode_matrix: np.ndarray,
-    target_phase: np.ndarray,
-    target_complex_wf: np.ndarray,
+def fit_coeffs_to_target_complex_field(
+    mode_matrix,
+    target_complex_wf,
+    target_phase,
     fit_mask=None,
-    max_nfev: int = 1000,
-    n_restarts: int = 3,
-    rng: Optional[np.random.Generator] = None,
 ):
-    """Fit complex LP coefficients to a wrapped target phase image."""
-    if rng is None:
-        rng = np.random.default_rng()
-
     M = np.asarray(mode_matrix, dtype=np.complex128)
-    n_modes = M.shape[1]
-    target_phase = wrap_phase(target_phase)
-    target_complex_wf = np.asarray(
-        target_complex_wf,
-        dtype=np.complex128,
-    )
 
     if fit_mask is None:
         fit_mask = np.ones(target_phase.shape, dtype=bool)
 
-    fit_mask = np.asarray(fit_mask, dtype=bool)
+    mask_flat = fit_mask.reshape(-1)
 
-    if fit_mask.shape != target_phase.shape:
-        raise ValueError(
-            f"fit_mask shape {fit_mask.shape} does not match "
-            f"target_phase shape {target_phase.shape}"
-        )
+    target_flat = np.asarray(
+        target_complex_wf,
+        dtype=np.complex128
+    ).reshape(-1)
 
-    if target_complex_wf.shape != target_phase.shape:
-        raise ValueError(
-            f"target_complex_wf shape {target_complex_wf.shape} does not match "
-            f"target_phase shape {target_phase.shape}"
-        )
+    # Only fit pixels inside the desired aperture
+    M_fit = M[mask_flat, :]
+    target_fit = target_flat[mask_flat]
 
-    fit_mask_flat = fit_mask.reshape(-1)
+    # -------------------------------------------------
+    # Exact complex least-squares solution
+    # -------------------------------------------------
+    coeffs_fit, residuals, rank, singular_values = np.linalg.lstsq(
+        M_fit,
+        target_fit,
+        rcond=None,
+    )
 
-    target_complex_norm = normalise_power(target_complex_wf)
-    target_flat = target_complex_norm.reshape(-1)
-
-    if M.shape[0] != target_flat.size:
-        raise ValueError(
-            f"Mode matrix has {M.shape[0]} pixels, but target has "
-            f"{target_flat.size}."
-        )
-
-    def residual(z: np.ndarray) -> np.ndarray:
-        coeffs = unpack_coeffs(z, n_modes)
-        field_flat = M @ coeffs
-        difference = field_flat[fit_mask_flat] - target_flat[fit_mask_flat]
-        return np.concatenate([difference.real, difference.imag])
-
-    best_result = None
-    for restart in range(n_restarts):
-        if restart == 0:
-            z0 = np.zeros(2 * n_modes)
-            z0[0] = 1.0
-        else:
-            z0 = rng.normal(0.0, 1.0, size=2 * n_modes)
-
-        result = least_squares(
-            residual,
-            z0,
-            max_nfev=max_nfev,
-            verbose=0,
-        )
-
-        if best_result is None or result.cost < best_result.cost:
-            best_result = result
-
-    coeffs_fit = unpack_coeffs(best_result.x, n_modes)
+    # Full reconstructed complex field
     field_fit = (M @ coeffs_fit).reshape(target_phase.shape)
+
     phase_fit = np.angle(field_fit)
-    phase_residual = wrap_phase(target_phase - phase_fit)
+
+    phase_residual = wrap_phase(
+        target_phase - phase_fit
+    )
 
     valid_residual = phase_residual[fit_mask]
 
-    rms_phase_error = np.sqrt(np.mean(valid_residual ** 2))
-    mean_abs_phase_error = np.mean(np.abs(valid_residual))
+    rms_phase_error = np.sqrt(
+        np.mean(valid_residual ** 2)
+    )
+
+    mean_abs_phase_error = np.mean(
+        np.abs(valid_residual)
+    )
+
+    # Complex-field RMS as an additional useful metric
+    complex_difference = (
+        field_fit[fit_mask]
+        - target_complex_wf[fit_mask]
+    )
+
+    rms_complex_error = np.sqrt(
+        np.mean(np.abs(complex_difference) ** 2)
+    )
 
     return (
         coeffs_fit,
@@ -938,7 +903,7 @@ def fit_coeffs_to_target_phase(
         phase_residual,
         rms_phase_error,
         mean_abs_phase_error,
-        best_result,
+        rms_complex_error,
     )
 
 
@@ -1103,8 +1068,6 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--n-modes", type=int, default=N_MODES)
     parser.add_argument("--n-test", type=int, default=N_TEST)
-    parser.add_argument("--max-nfev", type=int, default=MAX_NFEV)
-    parser.add_argument("--n-restarts", type=int, default=N_RESTARTS)
     parser.add_argument("--pad-factor", type=int, default=PAD_FACTOR)
     parser.add_argument(
         "--fourier-mapping",
@@ -1150,7 +1113,7 @@ def main() -> None:
     plot_crop_pixels = (
         None if args.plot_crop_pixels < 0 else args.plot_crop_pixels
     )
-    rng = np.random.default_rng(RNG_SEED)
+    
     os.makedirs(OUTDIR, exist_ok=True)
 
     wavefronts, wavefront_path, wavefront_key = load_wavefronts(
@@ -1196,10 +1159,8 @@ def main() -> None:
 
     rms_phase_errors = []
     mean_abs_phase_errors = []
-    costs = []
-    nfevs = []
-    success_flags = []
     coeffs_all = []
+    rms_complex_errors = []
   
 
     example_target = None
@@ -1232,23 +1193,20 @@ def main() -> None:
                radius_pixels=PUPIL_RADIUS_PIXELS,
            )
 
-       coeffs_fit, field_fit, phase_fit, phase_residual, rms_err, mae_err, res = (
-           fit_coeffs_to_target_phase(
-               mode_matrix=mode_matrix,
-               target_complex_wf=target_complex_wf,
-               target_phase=target_phase,
-               fit_mask=fit_mask,
-               max_nfev=args.max_nfev,
-               n_restarts=args.n_restarts,
-               rng=rng,
-           )
-       )
+       coeffs_fit, field_fit, phase_fit, phase_residual, rms_err, mae_err, complex_err = (
+        fit_coeffs_to_target_complex_field(
+            mode_matrix=mode_matrix,
+            target_complex_wf=target_complex_wf,
+            target_phase=target_phase,
+            fit_mask=fit_mask,
+        )
+    )
        # ============================================================
        # TEST: show only the largest/highest available LP mode
        # Comment out this block to return to the normal fitted result.
        # ============================================================
 
-       #test_mode_index = 0
+       #test_mode_index = -1
 
        #field_fit = far_modes[test_mode_index]
        #phase_fit = np.angle(field_fit)
@@ -1271,16 +1229,12 @@ def main() -> None:
 
        rms_phase_errors.append(rms_err)
        mean_abs_phase_errors.append(mae_err)
-       costs.append(res.cost)
-       nfevs.append(res.nfev)
-       success_flags.append(res.success)
+       rms_complex_errors.append(complex_err)
        coeffs_all.append(coeffs_fit)
 
        print("RMS wrapped phase error [rad]:", rms_err)
        print("Mean absolute wrapped phase error [rad]:", mae_err)
-       print("Cost:", res.cost)
-       print("nfev:", res.nfev)
-       print("Success:", res.success)
+       print("RMS complex-field error:", complex_err)
 
        if index == 0:
            example_target = target_phase
@@ -1292,9 +1246,7 @@ def main() -> None:
 
     rms_phase_errors = np.asarray(rms_phase_errors)
     mean_abs_phase_errors = np.asarray(mean_abs_phase_errors)
-    costs = np.asarray(costs)
-    nfevs = np.asarray(nfevs)
-    success_flags = np.asarray(success_flags)
+    rms_complex_errors = np.asarray(rms_complex_errors)
     coeffs_all = np.asarray(coeffs_all)
 
     crop_label = (
@@ -1312,9 +1264,7 @@ def main() -> None:
         results_path,
         rms_phase_errors=rms_phase_errors,
         mean_abs_phase_errors=mean_abs_phase_errors,
-        costs=costs,
-        nfevs=nfevs,
-        success_flags=success_flags,
+        rms_complex_errors=rms_complex_errors,
         coeffs_all=coeffs_all,
         labels=np.asarray(labels),
         lm_values=lm_values,
@@ -1356,9 +1306,7 @@ def main() -> None:
             np.arange(n_test),
             rms_phase_errors,
             mean_abs_phase_errors,
-            costs,
-            nfevs,
-            success_flags.astype(int),
+            rms_complex_errors,
         ]
     )
     np.savetxt(
@@ -1367,7 +1315,7 @@ def main() -> None:
         delimiter=",",
         header=(
             "sample,rms_phase_error_rad,mean_abs_phase_error_rad,"
-            "cost,nfev,success"
+            "rms_complex_error"
         ),
         comments="",
     )
@@ -1384,7 +1332,7 @@ def main() -> None:
     print("Mean RMS phase error [rad]:", np.mean(rms_phase_errors))
     print("Median RMS phase error [rad]:", np.median(rms_phase_errors))
     print("Mean absolute phase error [rad]:", np.mean(mean_abs_phase_errors))
-    print("Success rate:", np.mean(success_flags))
+    print("Mean RMS complex-field error:", np.mean(rms_complex_errors))
 
     example_plot_path = os.path.join(
         OUTDIR,
@@ -1398,7 +1346,7 @@ def main() -> None:
        phase_residual=example_residual,
        title=(
            f"Wavefront phase fit using {args.n_modes} far-field LP modes, "
-           f"mean RMS: {np.mean(rms_phase_errors):.3f} rad "
+           f"mean RMS: {np.mean(rms_complex_errors):.3f}"
            f"({mapping_label})"
        ),
        outpath=example_plot_path,
