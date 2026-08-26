@@ -44,7 +44,7 @@ DATADIR = '/Users/manavkalra/Downloads/PL-NN-testdata_forDec2025/'
 OUTDIR = DATADIR
 
 # Save the smiley image as this file, or change the path here.
-SMILEY_PATH = os.path.join(DATADIR, "smiley2.png")
+SMILEY_PATH = os.path.join(DATADIR, "smiley3.jpeg")
 
 # The supplied image is black-on-white. Inverting it makes the black smiley
 # strokes correspond to high target intensity.
