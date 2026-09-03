@@ -434,6 +434,20 @@ def train_one_run(
         predictions = model.predict(X_test[:num_preds, :, :], verbose=0)
         predictions_psf = predictions[0]
         predictions_wf = predictions[1]
+        rmse_psf = np.sqrt(
+        np.mean(
+            (predictions_psf - y_test_psf[:num_preds, :, :])**2
+            )
+        )
+
+        rmse_wf = np.sqrt(
+            np.mean(
+                (predictions_wf - y_test_wf[:num_preds, :, :])**2
+            )
+        )
+
+        print("PSF RMSE:", rmse_psf)
+        print("WF RMSE:", rmse_wf)
 
     if do_plotting:
         timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M")
@@ -484,6 +498,8 @@ def train_one_run(
     return {
         "objective_val_loss": objective_val_loss,
         "final_val_loss": final_val_loss,
+        "rmse_psf": rmse_psf,
+        "rmse_wf": rmse_wf,
         "history_val_loss": history_val_loss,
         "history_loss": history_loss,
         "pdict": copy.deepcopy(pdict),
@@ -503,3 +519,5 @@ if __name__ == "__main__":
     )
     print("Best val_loss seen in run:", result["objective_val_loss"])
     print("Final val_loss:", result["final_val_loss"])
+    print("Final PSF RMSE:", result["rmse_psf"])
+    print("Final WF RMSE:", result["rmse_wf"])
