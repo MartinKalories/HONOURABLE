@@ -12,7 +12,7 @@ import tensorflow as tf
 from skopt import Optimizer, dump, load
 from skopt.space import Real, Integer, Categorical
 
-from thirdopt import train_one_run, get_base_pdict, datadir
+from worse_seeing import train_one_run, get_base_pdict, datadir
 from optim_space import space
 
 # ------------------------------------------------------------
