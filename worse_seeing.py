@@ -429,6 +429,8 @@ def train_one_run(
 
     predictions_psf = None
     predictions_wf = None
+    rmse_psf = None
+    rmse_wf = None
 
     if do_predictions or do_plotting or save_preds:
         predictions = model.predict(X_test[:num_preds, :, :], verbose=0)
