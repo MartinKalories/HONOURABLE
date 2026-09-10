@@ -419,7 +419,7 @@ def train_one_run(
         verbose=verbose
     )
     print('Total time: %.2f seconds' % (time.time() - t))
-     if save_model:
+    if save_model:
             timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M")
             model_path = outdir + save_filename_pref + timestamp + ".keras"
     

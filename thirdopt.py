@@ -426,7 +426,7 @@ def train_one_run(
     
         model.save(model_path)
     
-            print("Saved trained model to:", model_path)
+        print("Saved trained model to:", model_path)
     history_loss = history.history['loss']
     history_val_loss = history.history['val_loss']
 
