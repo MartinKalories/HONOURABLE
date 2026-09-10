@@ -420,7 +420,13 @@ def train_one_run(
         verbose=verbose
     )
     print('Total time: %.2f seconds' % (time.time() - t))
-
+    if save_model:
+        timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M")
+        model_path = outdir + save_filename_pref + timestamp + ".keras"
+    
+        model.save(model_path)
+    
+            print("Saved trained model to:", model_path)
     history_loss = history.history['loss']
     history_val_loss = history.history['val_loss']
 
