@@ -406,9 +406,6 @@ def fit_coeffs_to_target_intensity(
     """
     Find complex LP coefficients that best reproduce the target INTENSITY.
 
-    IMPORTANT:
-    This is nonlinear because
-
         I_fit = |M c|^2
 
     so np.linalg.lstsq cannot be used directly for intensity-only fitting.
@@ -847,7 +844,7 @@ def main() -> None:
 )
 
     # -----------------------------------------------------
-    # Nonlinear least-squares intensity fit
+    # Nonear least-squares intensity fit
     # -----------------------------------------------------
 
     print(
