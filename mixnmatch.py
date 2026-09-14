@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 import matplotlib.pyplot as plt
- from tensorflow.keras.models import Model
+from tensorflow.keras.models import Model
 
 # ============================================================
 # SETTINGS
