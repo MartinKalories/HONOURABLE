@@ -448,6 +448,8 @@ def train_one_run(
         predictions = model.predict(X_test[:num_preds, :, :], verbose=0)
         predictions_psf = predictions[0]
         predictions_wf = predictions[1]
+        predictions_psf = predictions_psf[..., 0]
+        predictions_wf = predictions_wf[..., 0]
         rmse_psf = np.sqrt(
         np.mean(
             (predictions_psf - y_test_psf[:num_preds, :, :])**2
