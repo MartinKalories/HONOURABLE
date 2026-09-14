@@ -18,7 +18,7 @@ model_filename = (
     'pl2wf2psf_data202407_model01_20260914-1723.keras'
 )
 
-#normfacts_filename = ('pl2wf2psf_data202407_model01_20260910-1735_normfacts.npz')
+normfacts_filename = ('pl2wf2psf_data202407_model01_20260910-1735_normfacts.npz')
 
 
 # ------------------------------------------------------------
@@ -47,38 +47,38 @@ print("Model loaded.")
 # LOAD NORMALISATION FACTORS FROM DATASET A
 # ============================================================
 
-#print("Loading training normalisation factors...")
+print("Loading training normalisation factors...")
 
-#normfacts = np.load(
-#    datadir + normfacts_filename
-#)
+normfacts = np.load(
+   datadir + normfacts_filename
+)
 
-#PL_normfacts = normfacts['PL']
-#WF_normfacts = normfacts['WF']
-#PSF_normfacts = normfacts['PSF']
+PL_normfacts = normfacts['PL']
+WF_normfacts = normfacts['WF']
+PSF_normfacts = normfacts['PSF']
 
 
 # Extract individual values
 
-#PL_mean = PL_normfacts[0]
-#PL_std = PL_normfacts[2]
+PL_mean = PL_normfacts[0]
+PL_std = PL_normfacts[2]
 
-#WF_mean = WF_normfacts[0]
-#WF_std = WF_normfacts[2]
+WF_mean = WF_normfacts[0]
+WF_std = WF_normfacts[2]
 
-#PSF_min = PSF_normfacts[0]
-#PSF_max = PSF_normfacts[1]
+PSF_min = PSF_normfacts[0]
+PSF_max = PSF_normfacts[1]
 
 
-#print("\nNormalisation factors from Dataset A:")
-#print("PL mean:", PL_mean)
-#print("PL std :", PL_std)
+print("\nNormalisation factors from Dataset A:")
+print("PL mean:", PL_mean)
+print("PL std :", PL_std)
 
-#print("WF mean:", WF_mean)
-#print("WF std :", WF_std)
+print("WF mean:", WF_mean)
+print("WF std :", WF_std)
 
-#print("PSF min:", PSF_min)
-#print("PSF max:", PSF_max)
+print("PSF min:", PSF_min)
+print("PSF max:", PSF_max)
 
 
 # ============================================================
@@ -150,34 +150,34 @@ if not (
 # NORMALISE DATASET B USING DATASET A NORMALISATION
 # ============================================================
 
-#print("\nNormalising Dataset B using Dataset A factors...")
+print("\nNormalising Dataset B using Dataset A factors...")
 
 
 # ------------------------------------------------------------
 # PL
 # ------------------------------------------------------------
 
-#X_test_norm = (
-#    X_test - PL_mean
-#) / PL_std
+X_test_norm = (
+    X_test - PL_mean
+) / PL_std
 
 
 # ------------------------------------------------------------
 # WF
 # ------------------------------------------------------------
 
-#y_test_wf_norm = (
-#    y_test_wf - WF_mean
-#) / WF_std
+y_test_wf_norm = (
+    y_test_wf - WF_mean
+) / WF_std
 
 
 # ------------------------------------------------------------
 # PSF
 # ------------------------------------------------------------
 
-#y_test_psf_norm = (
-#    y_test_psf - PSF_min
-#) / PSF_max
+y_test_psf_norm = (
+    y_test_psf - PSF_min
+) / PSF_max
 
 
 # ============================================================
@@ -215,13 +215,13 @@ print("Prediction complete.")
 
 rmse_psf_norm = np.sqrt(
     np.mean(
-        (predictions_psf_norm - y_test_psf) ** 2 # _psf_norm instead of y_test if this doesnt work
+        (predictions_psf_norm - y_test_psf_norm) ** 2 # _psf_norm instead of y_test if this doesnt work
     )
 )
 
 rmse_wf_norm = np.sqrt(
     np.mean(
-        (predictions_wf_norm - y_test_wf) ** 2 # _wf_norm as well
+        (predictions_wf_norm - y_test_wf_norm) ** 2 # _wf_norm as well
     )
 )
 
@@ -238,14 +238,14 @@ print("WF RMSE :", rmse_wf_norm)
 # CONVERT PREDICTIONS BACK TO ORIGINAL UNITS
 # ============================================================
 
-#predictions_psf = (
-#    predictions_psf_norm * PSF_max
-#) + PSF_min
+predictions_psf = (
+    predictions_psf_norm * PSF_max
+) + PSF_min
 
 
-#predictions_wf = (
-#    predictions_wf_norm * WF_std
-#) + WF_mean
+predictions_wf = (
+    predictions_wf_norm * WF_std
+) + WF_mean
 
 
 # ============================================================
@@ -310,7 +310,7 @@ for i in range(
     plt.subplot(2, 2, 2)
 
     plt.imshow(
-        predictions_wf_norm[i]
+        predictions_wf[i]
     )
 
     plt.title(
@@ -344,7 +344,7 @@ for i in range(
     plt.subplot(2, 2, 4)
 
     plt.imshow(
-        predictions_psf_norm[i]
+        predictions_psf[i]
     )
 
     plt.title(
