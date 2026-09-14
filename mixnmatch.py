@@ -187,7 +187,7 @@ y_test_psf_norm = (
 print("\nRunning model on Dataset B...")
 
 predictions = model.predict(
-    X_test, #_norm
+    X_test_norm,
     
     verbose=1
 )
