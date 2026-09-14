@@ -187,7 +187,8 @@ if not (
 print("\nRunning model on Dataset B...")
 
 predictions = model.predict(
-    X_test_norm,
+    X_test, #_norm
+    
     verbose=1
 )
 
@@ -214,13 +215,13 @@ print("Prediction complete.")
 
 rmse_psf_norm = np.sqrt(
     np.mean(
-        (predictions_psf_norm - y_test_psf_norm) ** 2
+        (predictions_psf_norm - y_test) ** 2 # _psf_norm instead of y_test if this doesnt work
     )
 )
 
 rmse_wf_norm = np.sqrt(
     np.mean(
-        (predictions_wf_norm - y_test_wf_norm) ** 2
+        (predictions_wf_norm - y_test) ** 2 # _wf_norm as well
     )
 )
 
