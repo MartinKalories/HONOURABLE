@@ -372,7 +372,7 @@ def train_one_run(
     pdict_override= None, # for optimiser run params, for regular = none
     do_predictions=False,
     do_plotting=False,
-    save_model=False,
+    save_model=True,
     save_preds=False,
     save_movie=False,
     verbose=0,
