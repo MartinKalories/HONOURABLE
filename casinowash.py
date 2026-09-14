@@ -58,7 +58,7 @@ rng = np.random.default_rng(42)
 
 shuffle_indices = rng.permutation(len(all_plims))
 all_plims = all_plims[shuffle_indices]
-all_filenames = all_filenames[shuffle_indices]
+
 all_psfims = all_psfims[shuffle_indices]
 all_pupphase = all_pupphase[shuffle_indices]
 
