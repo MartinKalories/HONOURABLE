@@ -34,13 +34,13 @@ WF_filename = "slmcube_20240605_seeing_0.4-10-scl0.5_rand_10K_01_files-64px_comb
 # LOAD TRAINED MODEL
 # ============================================================
 
-#print("Loading trained model...")
+print("Loading trained model...")
 
-#model = keras.models.load_model(
-    #datadir + model_filename
-#)
+model = keras.models.load_model(
+    datadir + model_filename
+)
 
-#print("Model loaded.")
+print("Model loaded.")
 
 
 # ============================================================
