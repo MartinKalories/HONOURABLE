@@ -310,7 +310,7 @@ for i in range(
     plt.subplot(2, 2, 2)
 
     plt.imshow(
-        predictions_wf[i]
+        predictions_wf_norm[i]
     )
 
     plt.title(
@@ -344,7 +344,7 @@ for i in range(
     plt.subplot(2, 2, 4)
 
     plt.imshow(
-        predictions_psf[i]
+        predictions_psf_norm[i]
     )
 
     plt.title(
