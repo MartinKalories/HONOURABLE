@@ -422,9 +422,14 @@ def train_one_run(
     if save_model:
             timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M")
             model_path = outdir + save_filename_pref + timestamp + ".keras"
-    
+            normfacts_path = outdir + save_filename_pref + timestamp + "_normfacts.npz"
             model.save(model_path)
-    
+            np.savez(
+            normfacts_path,
+            PL=data["normfacts"]["PL"],
+            WF=data["normfacts"]["WF"],
+            PSF=data["normfacts"]["PSF"]
+            )
             print("Saved trained model to:", model_path)
          
     history_loss = history.history['loss']
