@@ -215,13 +215,13 @@ print("Prediction complete.")
 
 rmse_psf_norm = np.sqrt(
     np.mean(
-        (predictions_psf_norm - y_test) ** 2 # _psf_norm instead of y_test if this doesnt work
+        (predictions_psf_norm - y_test_psf) ** 2 # _psf_norm instead of y_test if this doesnt work
     )
 )
 
 rmse_wf_norm = np.sqrt(
     np.mean(
-        (predictions_wf_norm - y_test) ** 2 # _wf_norm as well
+        (predictions_wf_norm - y_test_wf) ** 2 # _wf_norm as well
     )
 )
 
