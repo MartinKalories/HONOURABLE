@@ -355,4 +355,16 @@ for i in range(
 
 
     plt.tight_layout()
+    save_path = datadir + f"prediction_example_{i}.png"
+
+    plt.savefig(
+        save_path,
+        dpi=300,
+        bbox_inches="tight"
+    )
+
+    print("Saved:", save_path)
+
     plt.show()
+    plt.show()
+
