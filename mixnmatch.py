@@ -131,7 +131,7 @@ print("PL shape :", X_test.shape)
 print("PSF shape:", y_test_psf.shape)
 print("WF shape :", y_test_wf.shape)
 
-max_samples = 10000
+max_samples = 50000
 
 n_samples = min(
     max_samples,
