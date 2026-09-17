@@ -131,6 +131,18 @@ print("PL shape :", X_test.shape)
 print("PSF shape:", y_test_psf.shape)
 print("WF shape :", y_test_wf.shape)
 
+max_samples = 10000
+
+n_samples = min(
+    max_samples,
+    len(X_test),
+    len(y_test_psf),
+    len(y_test_wf)
+)
+
+X_test = X_test[:n_samples]
+y_test_psf = y_test_psf[:n_samples]
+y_test_wf = y_test_wf[:n_samples]
 
 # ============================================================
 # CHECK DATA LENGTHS
