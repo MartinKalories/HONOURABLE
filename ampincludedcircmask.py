@@ -41,9 +41,6 @@ OUTDIR = DATADIR
 WAVEFRONT_NPZ_FILENAME = (
     "slmcube_20240605_seeing_0.4-10-scl1_rand_10K_01_files-combined.npz"
 )
-NORMFACTS_FILENAME = (
-    "pl2wf2psf_data202407_model01_20260914-2022_normfacts.npz"
-)
 WAVEFRONT_KEY = None
 
 # Fibre parameters. The length units are micrometres throughout this script.
@@ -1104,15 +1101,6 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    # Load the same WF normalisation factors used by the neural network.
-    normfacts = np.load(os.path.join(DATADIR, NORMFACTS_FILENAME))
-    WF_normfacts = normfacts["WF"]
-    WF_mean = WF_normfacts[0]
-    WF_std = WF_normfacts[2]
-
-    print("WF mean:", WF_mean)
-    print("WF std:", WF_std)
-
     if args.n_modes <= 0:
         raise ValueError("--n-modes must be positive.")
     if args.n_test <= 0:
@@ -1125,7 +1113,7 @@ def main() -> None:
     plot_crop_pixels = (
         None if args.plot_crop_pixels < 0 else args.plot_crop_pixels
     )
-
+    
     os.makedirs(OUTDIR, exist_ok=True)
 
     wavefronts, wavefront_path, wavefront_key = load_wavefronts(
@@ -1173,8 +1161,7 @@ def main() -> None:
     mean_abs_phase_errors = []
     coeffs_all = []
     rms_complex_errors = []
-    all_target_phases = []
-    all_fitted_phases = []
+  
 
     example_target = None
     example_target_amplitude = None
@@ -1184,111 +1171,83 @@ def main() -> None:
     example_mask = None
 
     for index in range(n_test):
-        print(f"\nFitting wavefront {index + 1}/{n_test}")
+       print(f"\nFitting wavefront {index + 1}/{n_test}")
 
-        target_phase = prepare_target_phase(wavefronts[index])
+       target_phase = prepare_target_phase(wavefronts[index])
 
-        # Fit uses the same centre crop as the modes, if enabled.
-        target_phase = centre_crop(target_phase, fit_crop_pixels)
+    # Fit uses the same centre crop as the modes, if enabled.
+       target_phase = centre_crop(target_phase, fit_crop_pixels)
+       # Use the final/highest-index LP mode as the synthetic target.
+     
 
-        target_amplitude, target_complex_wf = make_assumed_amplitude_wavefront(
-            target_phase,
-            radius_pixels=PUPIL_RADIUS_PIXELS,
-        )
+       target_amplitude, target_complex_wf = make_assumed_amplitude_wavefront(
+           target_phase,
+           radius_pixels=PUPIL_RADIUS_PIXELS,
+       )
 
-        if PUPIL_RADIUS_PIXELS is None:
-            fit_mask = None
-        else:
-            fit_mask = make_circular_mask(
-                target_phase.shape,
-                radius_pixels=PUPIL_RADIUS_PIXELS,
-            )
+       if PUPIL_RADIUS_PIXELS is None:
+           fit_mask = None
+       else:
+           fit_mask = make_circular_mask(
+               target_phase.shape,
+               radius_pixels=PUPIL_RADIUS_PIXELS,
+           )
 
-        (
-            coeffs_fit,
-            field_fit,
-            phase_fit,
-            phase_residual,
-            rms_err,
-            mae_err,
-            complex_err,
-        ) = fit_coeffs_to_target_complex_field(
+       coeffs_fit, field_fit, phase_fit, phase_residual, rms_err, mae_err, complex_err = (
+        fit_coeffs_to_target_complex_field(
             mode_matrix=mode_matrix,
             target_complex_wf=target_complex_wf,
             target_phase=target_phase,
             fit_mask=fit_mask,
         )
+    )
+       # ============================================================
+       # TEST: show only the largest/highest available LP mode
+       # Comment out this block to return to the normal fitted result.
+       # ============================================================
 
-        # ============================================================
-        # TEST: show only the largest/highest available LP mode
-        # Comment out this block to return to the normal fitted result.
-        # ============================================================
+       #test_mode_index = -1
 
-        # test_mode_index = -1
+       #field_fit = far_modes[test_mode_index]
+       #phase_fit = np.angle(field_fit)
+       #phase_residual = wrap_phase(target_phase - phase_fit)
 
-        # field_fit = far_modes[test_mode_index]
-        # phase_fit = np.angle(field_fit)
-        # phase_residual = wrap_phase(target_phase - phase_fit)
+       #if fit_mask is None:
+        #valid_residual = phase_residual.ravel()
+       #else:
+         #valid_residual = phase_residual[fit_mask]
 
-        # if fit_mask is None:
-        #     valid_residual = phase_residual.ravel()
-        # else:
-        #     valid_residual = phase_residual[fit_mask]
+       #rms_err = np.sqrt(np.mean(valid_residual ** 2))
+       #mae_err = np.mean(np.abs(valid_residual))
 
-        # rms_err = np.sqrt(np.mean(valid_residual ** 2))
-        # mae_err = np.mean(np.abs(valid_residual))
+# Make the coefficient plot show only the selected mode.
+       #coeffs_fit = np.zeros(args.n_modes, dtype=np.complex128)
+       #coeffs_fit[test_mode_index] = 1.0
 
-        # Make the coefficient plot show only the selected mode.
-        # coeffs_fit = np.zeros(args.n_modes, dtype=np.complex128)
-        # coeffs_fit[test_mode_index] = 1.0
+       fit_amplitude = np.abs(field_fit)
+       fit_complex_wf = field_fit
 
-        # Store all target and fitted WFs so the final RMSE is calculated
-        # in the same global style as the neural-network code. Keeping this
-        # after the TEST block means the test-mode phase is used if enabled.
-        all_target_phases.append(target_phase)
-        all_fitted_phases.append(phase_fit)
+       rms_phase_errors.append(rms_err)
+       mean_abs_phase_errors.append(mae_err)
+       rms_complex_errors.append(complex_err)
+       coeffs_all.append(coeffs_fit)
 
-        fit_amplitude = np.abs(field_fit)
-        fit_complex_wf = field_fit
+       print("RMS wrapped phase error [rad]:", rms_err)
+       print("Mean absolute wrapped phase error [rad]:", mae_err)
+       print("RMS complex-field error:", complex_err)
 
-        rms_phase_errors.append(rms_err)
-        mean_abs_phase_errors.append(mae_err)
-        rms_complex_errors.append(complex_err)
-        coeffs_all.append(coeffs_fit)
-
-        print("RMS wrapped phase error [rad]:", rms_err)
-        print("Mean absolute wrapped phase error [rad]:", mae_err)
-        print("RMS complex-field error:", complex_err)
-
-        if index == 0:
-            example_target = target_phase
-            example_target_amplitude = target_amplitude
-            example_field_fit = field_fit
-            example_residual = phase_residual
-            example_coeffs = coeffs_fit
-            example_mask = fit_mask
+       if index == 0:
+           example_target = target_phase
+           example_target_amplitude = target_amplitude
+           example_field_fit = field_fit
+           example_residual = phase_residual
+           example_coeffs = coeffs_fit
+           example_mask = fit_mask
 
     rms_phase_errors = np.asarray(rms_phase_errors)
     mean_abs_phase_errors = np.asarray(mean_abs_phase_errors)
     rms_complex_errors = np.asarray(rms_complex_errors)
     coeffs_all = np.asarray(coeffs_all)
-
-    all_target_phases = np.asarray(all_target_phases)
-    all_fitted_phases = np.asarray(all_fitted_phases)
-
-    # ============================================================
-    # NN-STYLE WF RMSE
-    # ============================================================
-    # Apply the same WF normalisation factors as the neural network,
-    # then calculate one global RMSE over every image and every pixel.
-    target_norm = (all_target_phases - WF_mean) / WF_std
-    fit_norm = (all_fitted_phases - WF_mean) / WF_std
-
-    rmse_wf_nn_style = np.sqrt(
-        np.mean(
-            (fit_norm - target_norm) ** 2
-        )
-    )
 
     crop_label = (
         "full" if fit_crop_pixels is None else f"crop{2 * fit_crop_pixels}px"
@@ -1306,7 +1265,6 @@ def main() -> None:
         rms_phase_errors=rms_phase_errors,
         mean_abs_phase_errors=mean_abs_phase_errors,
         rms_complex_errors=rms_complex_errors,
-        rmse_wf_nn_style=rmse_wf_nn_style,
         coeffs_all=coeffs_all,
         labels=np.asarray(labels),
         lm_values=lm_values,
@@ -1361,8 +1319,6 @@ def main() -> None:
         ),
         comments="",
     )
-
-    print("WF RMSE:", rmse_wf_nn_style)
     print("Saved CSV summary to:", csv_path)
 
     print("\n==============================")
@@ -1373,7 +1329,6 @@ def main() -> None:
     print("Fit crop:", crop_label)
     print("Fourier mapping:", args.fourier_mapping)
     print("Padding factor:", args.pad_factor)
-    print("NN-style WF RMSE:", rmse_wf_nn_style)
     print("Mean RMS phase error [rad]:", np.mean(rms_phase_errors))
     print("Median RMS phase error [rad]:", np.median(rms_phase_errors))
     print("Mean absolute phase error [rad]:", np.mean(mean_abs_phase_errors))
@@ -1385,19 +1340,19 @@ def main() -> None:
         f"{crop_label}_{mapping_label}_{run_stamp}.png",
     )
     plot_phase_fit_example(
-        target_phase=example_target,
-        target_amplitude=example_target_amplitude,
-        field_fit=example_field_fit,
-        phase_residual=example_residual,
-        title=(
-            f"Wavefront phase fit using {args.n_modes} far-field LP modes, "
-            f"mean RMS: {np.mean(rms_complex_errors):.3f} "
-            f"({mapping_label})"
-        ),
-        outpath=example_plot_path,
-        plot_crop_pixels=plot_crop_pixels,
-        fit_mask=example_mask,
-    )
+       target_phase=example_target,
+       target_amplitude=example_target_amplitude,
+       field_fit=example_field_fit,
+       phase_residual=example_residual,
+       title=(
+           f"Wavefront phase fit using {args.n_modes} far-field LP modes, "
+           f"mean RMS: {np.mean(rms_complex_errors):.3f}"
+           f"({mapping_label})"
+       ),
+       outpath=example_plot_path,
+       plot_crop_pixels=plot_crop_pixels,
+       fit_mask=example_mask,
+   )
     print("Saved example phase plot to:", example_plot_path)
 
     coeff_plot_path = os.path.join(
