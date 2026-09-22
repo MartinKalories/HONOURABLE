@@ -34,8 +34,8 @@ from lanternfiber import lanternfiber
 # Default settings
 # -------------------------------------------------------------------------
 
-#DATADIR = "/home/manav//PL-NN-testdata_forDec2025/"
-DATADIR = '/Users/manavkalra/Downloads/PL-NN-testdata_forDec2025/'
+DATADIR = "/home/manav//PL-NN-testdata_forDec2025/"
+#DATADIR = '/Users/manavkalra/Downloads/PL-NN-testdata_forDec2025/'
 OUTDIR = DATADIR
 
 WAVEFRONT_NPZ_FILENAME = (
