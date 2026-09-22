@@ -1214,8 +1214,7 @@ def main() -> None:
             fit_mask=fit_mask,
         )
     )
-        all_target_phases.append(target_phase)
-        all_fitted_phases.append(phase_fit)
+        
        # ============================================================
        # TEST: show only the largest/highest available LP mode
        # Comment out this block to return to the normal fitted result.
@@ -1238,7 +1237,8 @@ def main() -> None:
 # Make the coefficient plot show only the selected mode.
        #coeffs_fit = np.zeros(args.n_modes, dtype=np.complex128)
        #coeffs_fit[test_mode_index] = 1.0
-
+       all_target_phases.append(target_phase)
+       all_fitted_phases.append(phase_fit)
        fit_amplitude = np.abs(field_fit)
        fit_complex_wf = field_fit
 
@@ -1263,9 +1263,6 @@ def main() -> None:
     mean_abs_phase_errors = np.asarray(mean_abs_phase_errors)
     rms_complex_errors = np.asarray(rms_complex_errors)
     coeffs_all = np.asarray(coeffs_all)
-
-
-
     all_target_phases = np.asarray(all_target_phases)
     all_fitted_phases = np.asarray(all_fitted_phases)
 
@@ -1339,17 +1336,22 @@ def main() -> None:
         ),
         comments="",
     )
-   target_norm = (all_target_phases - WF_mean) / WF_std
+       target_norm = (
+        all_target_phases - WF_mean
+    ) / WF_std
 
-   fit_norm = (all_fitted_phases - WF_mean) / WF_std
+    fit_norm = (
+        all_fitted_phases - WF_mean
+    ) / WF_std
 
-   rmse_wf_nn_style = np.sqrt(
-    np.mean(
-        (fit_norm - target_norm) ** 2
+    rmse_wf_nn_style = np.sqrt(
+        np.mean(
+            (fit_norm - target_norm) ** 2
+        )
     )
-)
-print("WF RMSE:", rmse_wf_nn_style)
-print("Saved CSV summary to:", csv_path)
+
+    print("WF RMSE:", rmse_wf_nn_style)
+    print("Saved CSV summary to:", csv_path)
 
     print("\n==============================")
     print("Wavefront phase far-field LP fitting results")
