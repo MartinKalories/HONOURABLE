@@ -1172,7 +1172,6 @@ def main() -> None:
     mean_abs_phase_errors = []
     coeffs_all = []
     rms_complex_errors = []
-
     all_target_phases = []
     all_fitted_phases = []
   
@@ -1215,8 +1214,8 @@ def main() -> None:
             fit_mask=fit_mask,
         )
     )
-       all_target_phases.append(target_phase)
-       all_fitted_phases.append(phase_fit)
+        all_target_phases.append(target_phase)
+        all_fitted_phases.append(phase_fit)
        # ============================================================
        # TEST: show only the largest/highest available LP mode
        # Comment out this block to return to the normal fitted result.
@@ -1349,9 +1348,8 @@ def main() -> None:
         (fit_norm - target_norm) ** 2
     )
 )
-
-    print("WF RMSE:", rmse_wf_nn_style)
-    print("Saved CSV summary to:", csv_path)
+print("WF RMSE:", rmse_wf_nn_style)
+print("Saved CSV summary to:", csv_path)
 
     print("\n==============================")
     print("Wavefront phase far-field LP fitting results")
