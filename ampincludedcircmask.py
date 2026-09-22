@@ -1173,8 +1173,8 @@ def main() -> None:
     coeffs_all = []
     rms_complex_errors = []
 
-   all_target_phases = []
-   all_fitted_phases = []
+    all_target_phases = []
+    all_fitted_phases = []
   
 
     example_target = None
@@ -1215,8 +1215,8 @@ def main() -> None:
             fit_mask=fit_mask,
         )
     )
-    all_target_phases.append(target_phase)
-    all_fitted_phases.append(phase_fit)
+       all_target_phases.append(target_phase)
+       all_fitted_phases.append(phase_fit)
        # ============================================================
        # TEST: show only the largest/highest available LP mode
        # Comment out this block to return to the normal fitted result.
@@ -1350,7 +1350,7 @@ def main() -> None:
     )
 )
 
-print("WF RMSE:", rmse_wf_nn_style)
+    print("WF RMSE:", rmse_wf_nn_style)
     print("Saved CSV summary to:", csv_path)
 
     print("\n==============================")
