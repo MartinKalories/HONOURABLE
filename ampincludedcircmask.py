@@ -41,6 +41,9 @@ OUTDIR = DATADIR
 WAVEFRONT_NPZ_FILENAME = (
     "slmcube_20240605_seeing_0.4-10-scl1_rand_10K_01_files-combined.npz"
 )
+NORMFACTS_FILENAME = (
+    "pl2wf2psf_data202407_model01_20260914-2022_normfacts.npz"
+)
 WAVEFRONT_KEY = None
 
 # Fibre parameters. The length units are micrometres throughout this script.
@@ -1100,7 +1103,15 @@ def main() -> None:
         help="Do not save the full-FFT diagnostic image.",
     )
     args = parser.parse_args()
+    normfacts = np.load(os.path.join(DATADIR, NORMFACTS_FILENAME))
 
+    WF_normfacts = normfacts["WF"]
+
+    WF_mean = WF_normfacts[0]
+    WF_std = WF_normfacts[2]
+
+    print("WF mean:", WF_mean)
+    print("WF std:", WF_std)
     if args.n_modes <= 0:
         raise ValueError("--n-modes must be positive.")
     if args.n_test <= 0:
@@ -1161,6 +1172,9 @@ def main() -> None:
     mean_abs_phase_errors = []
     coeffs_all = []
     rms_complex_errors = []
+
+   all_target_phases = []
+   all_fitted_phases = []
   
 
     example_target = None
@@ -1201,6 +1215,8 @@ def main() -> None:
             fit_mask=fit_mask,
         )
     )
+    all_target_phases.append(target_phase)
+    all_fitted_phases.append(phase_fit)
        # ============================================================
        # TEST: show only the largest/highest available LP mode
        # Comment out this block to return to the normal fitted result.
@@ -1248,6 +1264,11 @@ def main() -> None:
     mean_abs_phase_errors = np.asarray(mean_abs_phase_errors)
     rms_complex_errors = np.asarray(rms_complex_errors)
     coeffs_all = np.asarray(coeffs_all)
+
+
+
+    all_target_phases = np.asarray(all_target_phases)
+    all_fitted_phases = np.asarray(all_fitted_phases)
 
     crop_label = (
         "full" if fit_crop_pixels is None else f"crop{2 * fit_crop_pixels}px"
@@ -1319,6 +1340,17 @@ def main() -> None:
         ),
         comments="",
     )
+   target_norm = (all_target_phases - WF_mean) / WF_std
+
+   fit_norm = (all_fitted_phases - WF_mean) / WF_std
+
+   rmse_wf_nn_style = np.sqrt(
+    np.mean(
+        (fit_norm - target_norm) ** 2
+    )
+)
+
+print("WF RMSE:", rmse_wf_nn_style)
     print("Saved CSV summary to:", csv_path)
 
     print("\n==============================")
