@@ -12,7 +12,7 @@ import tensorflow as tf
 from skopt import Optimizer, dump, load
 from skopt.space import Real, Integer, Categorical
 
-from worse_seeing import train_one_run, get_base_pdict, datadir
+from foldedlikeanomlette import train_one_run, get_base_pdict, datadir
 from optim_space import space
 
 # ------------------------------------------------------------
@@ -20,7 +20,7 @@ from optim_space import space
 # Keep this the same to resume a crashed run.
 # Change this when starting a new experiment.
 # ------------------------------------------------------------
-RUN_ID = "bayesopt_better_seeing_nosub_noLR_all_trials"
+RUN_ID = "bayesopt_mixed_seeing_nosub_noLR_all_trials"
 
 save_dir = datadir
 os.makedirs(save_dir, exist_ok=True)
