@@ -25,9 +25,9 @@ normfacts_filename = ('pl2wf2psf_data202407_model01_20260917-2026_normfacts.npz'
 # NEW DATASET B
 # ------------------------------------------------------------
 
-PL_filename =  "pllabdata_20240605_singlepsf_01_slmcube_20240605_seeing_0.4-10-scl0.5_rand_10K_01_proc2_files-combined.npz"
-PSF_filename = "pllabdata_20240605_singlepsf_01_slmcube_20240605_seeing_0.4-10-scl0.5_rand_10K_01_proc2_files-combined-PSFs.npz"
-WF_filename = "slmcube_20240605_seeing_0.4-10-scl0.5_rand_10K_01_files-64px_combined.npz"
+PL_filename =  "pllabdata_20240605_singlepsf_01_slmcube_20240605_seeing_0.4-10-scl1-scl0.5_mixed_files-combined.npz"
+PSF_filename = "pllabdata_20240605_singlepsf_01_slmcube_20240605_seeing_0.4-10-scl1-scl0.5_mixed_files-combined-PSFs.npz"
+WF_filename = "slmcube_20240605_seeing_0.4-10-scl1-scl0.5_mixed_files-combined.npz"
 
 
 
