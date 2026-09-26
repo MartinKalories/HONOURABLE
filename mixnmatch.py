@@ -15,10 +15,10 @@ datadir = '/home/manav/PL-NN-testdata_forDec2025/'
 # ------------------------------------------------------------
 
 model_filename = (
-    'pl2wf2psf_data202407_model01_20260917-2026.keras'
+    'pl2wf2psf_data202407_model01_202601914_2022.keras'
 )
 
-normfacts_filename = ('pl2wf2psf_data202407_model01_20260917-2026_normfacts.npz')
+normfacts_filename = ('pl2wf2psf_data202407_model01_202601914_2022_normfacts.npz')
 
 
 # ------------------------------------------------------------
