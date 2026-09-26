@@ -247,43 +247,52 @@ print("PSF RMSE:", rmse_psf_norm)
 print("WF RMSE :", rmse_wf_norm)
 
 
+
 # ============================================================
 # CONVERT PREDICTIONS BACK TO ORIGINAL UNITS
 # ============================================================
 
-predictions_psf = (
-    predictions_psf_norm * PSF_max
-) + PSF_min
+predictions_psf = (predictions_psf_norm * PSF_max) + PSF_min
 
-
-predictions_wf = (
-    predictions_wf_norm * WF_std
-) + WF_mean
+predictions_wf = (predictions_wf_norm * WF_std) + WF_mean
 
 
 # ============================================================
 # RMSE IN ORIGINAL DATA UNITS
 # ============================================================
 
-#rmse_psf = np.sqrt(
-  #  np.mean(
-   #     (predictions_psf - y_test_psf) ** 2
-  #  )
-#)
+rmse_psf = np.sqrt(np.mean((predictions_psf - y_test_psf) ** 2))
 
-#rmse_wf = np.sqrt(
-#    np.mean(
-#        (predictions_wf - y_test_wf) ** 2
-#    )
-#)
+rmse_wf = np.sqrt(np.mean((predictions_wf - y_test_wf) ** 2))
 
 
-#print("\n===================================")
-#print("ORIGINAL SCALE TEST RESULTS")
-#print("===================================")
+# ============================================================
+# SAME RESULT DIRECTLY FROM NORMALISED RMSE
+# ============================================================
 
-#print("PSF RMSE:", rmse_psf)
-#print("WF RMSE :", rmse_wf)
+rmse_psf_from_norm = rmse_psf_norm * PSF_max
+rmse_wf_from_norm = rmse_wf_norm * WF_std
+
+
+print("\n===================================")
+print("NORMALISED TEST RESULTS")
+print("===================================")
+
+print("PSF RMSE (normalised):", rmse_psf_norm)
+print("WF RMSE  (normalised):", rmse_wf_norm)
+
+
+print("\n===================================")
+print("ORIGINAL SCALE TEST RESULTS")
+print("===================================")
+
+print("PSF RMSE:", rmse_psf)
+print("WF RMSE [rad]:", rmse_wf)
+
+
+print("\nCross-check from normalised RMSE:")
+print("PSF RMSE:", rmse_psf_from_norm)
+print("WF RMSE [rad]:", rmse_wf_from_norm)
 
 
 # ============================================================
