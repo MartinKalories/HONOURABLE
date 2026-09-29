@@ -88,6 +88,56 @@ print("PSF max:", PSF_max)
 
 print("\nLoading Dataset B...")
 
+def wrapped_pupil_rmse(pred, true, radius_pixels=31):
+    """
+    pred, true: arrays shaped (N, H, W)
+
+    Returns:
+        mean_rmse      = mean of per-image RMS values
+        per_image_rmse = RMS for each individual wavefront
+        global_rmse    = pooled RMS over all images/pupil pixels
+    """
+
+    pred = np.squeeze(pred)
+    true = np.squeeze(true)
+
+    _, H, W = true.shape
+
+    yy, xx = np.ogrid[:H, :W]
+
+    cy = (H - 1) / 2
+    cx = (W - 1) / 2
+
+    pupil_mask = (
+        (xx - cx)**2 +
+        (yy - cy)**2
+    ) <= radius_pixels**2
+
+    # Phase-aware residual in [-pi, pi]
+    residual = np.angle(
+        np.exp(1j * (pred - true))
+    )
+
+    # RMS for each wavefront
+    per_image_rmse = np.sqrt(
+        np.mean(
+            residual[:, pupil_mask]**2,
+            axis=1
+        )
+    )
+
+    # This matches your current LP "Mean RMS phase error"
+    mean_rmse = np.mean(per_image_rmse)
+
+    # Optional pooled/global RMSE
+    global_rmse = np.sqrt(
+        np.mean(
+            residual[:, pupil_mask]**2
+        )
+    )
+
+    return mean_rmse, per_image_rmse, global_rmse
+
 
 # ------------------------------------------------------------
 # PL INPUT
@@ -264,6 +314,23 @@ predictions_wf = (predictions_wf_norm * WF_std) + WF_mean
 rmse_psf = np.sqrt(np.mean((predictions_psf - y_test_psf) ** 2))
 
 rmse_wf = np.sqrt(np.mean((predictions_wf - y_test_wf) ** 2))
+
+mean_wf_rmse, per_image_wf_rmse, global_wf_rmse = \
+    wrapped_pupil_rmse(
+        predictions_wf,
+        y_test_wf,
+        radius_pixels=31
+    )
+
+print(
+    "Mean wrapped pupil WF RMSE [rad]:",
+    mean_wf_rmse
+)
+
+print(
+    "Global wrapped pupil WF RMSE [rad]:",
+    global_wf_rmse
+)
 
 
 # ============================================================
