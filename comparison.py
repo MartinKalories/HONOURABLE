@@ -84,7 +84,7 @@ print("WF file size:",
 # ------------------------------------------------------------
 
 LP_RESULTS_FILE = (
-    "WF_phase_farfieldLP_fit_results_10000wfs_27modes_full_custom_20261003_180229.npz"
+    "WF_phase_farfieldLP_fit_results_100000wfs_27modes_full_custom_20261003_204706.npz"
 )
 
 
