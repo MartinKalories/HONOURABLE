@@ -8,7 +8,8 @@ def fingerprint(arr):
     arr = np.ascontiguousarray(arr)
     return hashlib.sha256(arr.tobytes()).hexdigest()[:16]
 
-
+print("\nRunning script:")
+print(os.path.abspath(__file__))
 # ============================================================
 # SETTINGS
 # ============================================================
