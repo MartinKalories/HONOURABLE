@@ -310,10 +310,16 @@ print(
 
 
 # ============================================================
-# OPTIONAL: NN vs TRUE
+# NN vs TRUE
 # ============================================================
 
-nn_true_mean, _, _, _, _ = wrapped_pupil_rmse(
+(
+    nn_true_mean,
+    nn_true_per_image,
+    nn_true_global,
+    _,
+    _
+) = wrapped_pupil_rmse(
     nn_wf,
     true_wf,
     radius_pixels=PUPIL_RADIUS_PIXELS
@@ -321,35 +327,44 @@ nn_true_mean, _, _, _, _ = wrapped_pupil_rmse(
 
 
 # ============================================================
-# OPTIONAL: LP vs TRUE
+# LP vs TRUE
 # ============================================================
 
-lp_true_mean, _, _, _, _ = wrapped_pupil_rmse(
+(
+    lp_true_mean,
+    lp_true_per_image,
+    lp_true_global,
+    _,
+    _
+) = wrapped_pupil_rmse(
     lp_wf,
     true_wf,
     radius_pixels=PUPIL_RADIUS_PIXELS
 )
 
 
+# ============================================================
+# GLOBAL RMSE COMPARISON
+# ============================================================
+
 print("\n======================================")
-print("REFERENCE COMPARISON")
+print("GLOBAL WRAPPED PUPIL RMSE COMPARISON")
 print("======================================")
 
 print(
     "NN vs true WF [rad]:",
-    nn_true_mean
+    nn_true_global
 )
 
 print(
     "LP fit vs true WF [rad]:",
-    lp_true_mean
+    lp_true_global
 )
 
 print(
     "NN vs LP fit [rad]:",
-    nn_lp_mean_rmse
+    nn_lp_global_rmse
 )
-
 
 # ============================================================
 # SHOW ONE EXAMPLE
