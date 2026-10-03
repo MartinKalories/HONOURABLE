@@ -4,6 +4,7 @@ from tensorflow import keras
 import matplotlib.pyplot as plt
 from tensorflow.keras.models import Model
 import hashlib
+import os
 
 def fingerprint(arr):
     arr = np.ascontiguousarray(arr)
