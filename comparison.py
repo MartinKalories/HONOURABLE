@@ -377,7 +377,7 @@ nn_plot = np.where(
     np.nan
 )
 
-llp_plot = np.where(
+lp_plot = np.where(
     pupil_mask,
     wrap_phase(lp_wf[i]),
     np.nan
