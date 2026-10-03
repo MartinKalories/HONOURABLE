@@ -43,7 +43,33 @@ PSF_filename = "pllabdata_20240605_singlepsf_01_slmcube_20240605_seeing_0.4-10-s
 WF_filename = "slmcube_20240605_seeing_0.4-10-scl1_rand_10K_01_files-combined.npz"
  
 
+print("\n======================================")
+print("FILES ACTUALLY LOADED")
+print("======================================")
 
+print("Model:")
+print(os.path.abspath(datadir + model_filename))
+
+print("\nNormfacts:")
+print(os.path.abspath(datadir + normfacts_filename))
+
+print("\nPL:")
+print(os.path.abspath(datadir + PL_filename))
+
+print("\nWF:")
+print(os.path.abspath(datadir + WF_filename))
+
+print("\nPL exists:",
+      os.path.exists(datadir + PL_filename))
+
+print("WF exists:",
+      os.path.exists(datadir + WF_filename))
+
+print("\nPL file size:",
+      os.path.getsize(datadir + PL_filename))
+
+print("WF file size:",
+      os.path.getsize(datadir + WF_filename))
 
 
 # ============================================================
