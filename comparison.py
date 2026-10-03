@@ -373,13 +373,13 @@ i = 0
 
 nn_plot = np.where(
     pupil_mask,
-    nn_wf[i],
+    wrap_phase(nn_wf[i]),
     np.nan
 )
 
-lp_plot = np.where(
+llp_plot = np.where(
     pupil_mask,
-    lp_wf[i],
+    wrap_phase(lp_wf[i]),
     np.nan
 )
 
