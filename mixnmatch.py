@@ -3,6 +3,11 @@ import tensorflow as tf
 from tensorflow import keras
 import matplotlib.pyplot as plt
 from tensorflow.keras.models import Model
+import hashlib
+
+def fingerprint(arr):
+    arr = np.ascontiguousarray(arr)
+    return hashlib.sha256(arr.tobytes()).hexdigest()[:16]
 
 # ============================================================
 # SETTINGS
@@ -312,6 +317,21 @@ predictions_psf = (predictions_psf_norm * PSF_max) + PSF_min
 
 predictions_wf = (predictions_wf_norm * WF_std) + WF_mean
 
+print("\n======================================")
+print("ARRAY FINGERPRINTS")
+print("======================================")
+
+print("X_test          :", fingerprint(X_test))
+print("X_test_norm     :", fingerprint(X_test_norm))
+print("true_wf         :", fingerprint(y_test_wf))
+print("prediction_norm :", fingerprint(predictions_wf_norm))
+print("prediction_wf   :", fingerprint(predictions_wf))
+
+print("\nNORMALISATION")
+print("PL_mean:", PL_mean)
+print("PL_std :", PL_std)
+print("WF_mean:", WF_mean)
+print("WF_std :", WF_std)
 
 # ============================================================
 # RMSE IN ORIGINAL DATA UNITS
