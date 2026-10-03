@@ -230,6 +230,40 @@ nn_wf = (
     predictions_wf_norm * WF_std
 ) + WF_mean
 
+# ============================================================
+# EXACT NN SANITY CHECK
+# This should reproduce the standalone NN script exactly
+# ============================================================
+
+check_mask = make_circular_mask(
+    true_wf.shape[-2:],
+    radius_pixels=31
+)
+
+check_residual = np.angle(
+    np.exp(
+        1j * (nn_wf - true_wf)
+    )
+)
+
+check_global_rmse = np.sqrt(
+    np.mean(
+        check_residual[:, check_mask] ** 2
+    )
+)
+
+print("\n======================================")
+print("STANDALONE NN SANITY CHECK")
+print("======================================")
+
+print("N samples:", len(nn_wf))
+print("NN shape :", nn_wf.shape)
+print("True shape:", true_wf.shape)
+
+print(
+    "Direct global wrapped pupil RMSE:",
+    check_global_rmse
+)
 
 # ============================================================
 # RECONSTRUCT LP FITTED WAVEFRONTS
@@ -365,6 +399,10 @@ print(
     nn_lp_global_rmse
 )
 
+print("Standalone/available PL count:", len(X_test))
+print("Available WF count:", len(true_wf))
+print("LP count:", n_lp)
+print("Actual n_compare:", n_compare)
 # ============================================================
 # SHOW ONE EXAMPLE
 # ============================================================
