@@ -31,7 +31,7 @@ normfacts_filename = (
 #scl1:pl2wf2psf_data202407_model01_20260914-2022.keras
 #scl0.5: pl2wf2psf_data202407_model01_20260917-2026.keras
 PL_filename = (
-    "pllabdata_20240605_singlepsf_01_slmcube_20240605_seeing_0.4-10-scl0.5_rand_10K_01_proc2_files-combined-PSFs.npz"
+    "pllabdata_20240605_singlepsf_01_slmcube_20240605_seeing_0.4-10-scl0.5_rand_10K_01_proc2_files-combined.npz"
 )
 
 WF_filename = (
