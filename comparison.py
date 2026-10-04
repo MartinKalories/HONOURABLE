@@ -22,20 +22,20 @@ datadir = "/home/manav/PL-NN-testdata_forDec2025/"
 # ------------------------------------------------------------
 
 model_filename = (
-    "pl2wf2psf_data202407_model01_20260917-2026.keras"
+    "pl2wf2psf_data202407_model01_20260914-2022.keras"
 )
 
 normfacts_filename = (
-    "pl2wf2psf_data202407_model01_20260917-2026_normfacts.npz"
+    "pl2wf2psf_data202407_model01_20260914-2022_normfacts.npz"
 )
 #scl1:pl2wf2psf_data202407_model01_20260914-2022.keras
 #scl0.5: pl2wf2psf_data202407_model01_20260917-2026.keras
 PL_filename = (
-    "pllabdata_20240605_singlepsf_01_slmcube_20240605_seeing_0.4-10-scl1-scl0.5_mixed_files-combined.npz"
+    "pllabdata_20240605_singlepsf_01_slmcube_20240605_seeing_0.4-10-scl0.5_rand_10K_01_proc2_files-combined-PSFs.npz"
 )
 
 WF_filename = (
-    "slmcube_20240605_seeing_0.4-10-scl1-scl0.5_mixed_files-combined.npz"
+    "slmcube_20240605_seeing_0.4-10-scl0.5_rand_10K_01_files-64px_combined.npz"
 )
 
 #scl1
@@ -59,9 +59,9 @@ WF_filename = (
 # ------------------------------------------------------------
 
 LP_RESULTS_FILE = (
-    #"WF_phase_farfieldLP_fit_results_100000wfs_27modes_full_custom_20261003_204706.npz"
+    "WF_phase_farfieldLP_fit_results_100000wfs_27modes_full_custom_20261003_204706.npz"
     #"WF_phase_farfieldLP_fit_results_100000wfs_27modes_full_custom_20261003_220237.npz"
-    "WF_phase_farfieldLP_fit_results_100000wfs_27modes_full_custom_20261004_132248.npz"
+    #"WF_phase_farfieldLP_fit_results_100000wfs_27modes_full_custom_20261004_132248.npz"
 )
 
 
