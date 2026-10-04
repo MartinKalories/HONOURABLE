@@ -35,7 +35,7 @@ PL_filename = (
 )
 
 WF_filename = (
-    "slmcube_20240605_seeing_0.4-10-scl1_rand_10K_01_files-combined.npz"
+    "slmcube_20240605_seeing_0.4-10-scl0.5_rand_10K_01_files-64px_combined.npz"
 )
 
 #scl1
