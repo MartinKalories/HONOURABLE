@@ -31,11 +31,11 @@ normfacts_filename = (
 #scl1:pl2wf2psf_data202407_model01_20260914-2022.keras
 #scl0.5: pl2wf2psf_data202407_model01_20260917-2026.keras
 PL_filename = (
-    "pllabdata_20240605_singlepsf_01_slmcube_20240605_seeing_0.4-10-scl1_rand_10K_01_files-combined.npz"
+    "pllabdata_20240605_singlepsf_01_slmcube_20240605_seeing_0.4-10-scl1-scl0.5_mixed_files-combined.npz"
 )
 
 WF_filename = (
-    "slmcube_20240605_seeing_0.4-10-scl1_rand_10K_01_files-combined.npz"
+    "slmcube_20240605_seeing_0.4-10-scl1-scl0.5_mixed_files-combined.npz"
 )
 
 #scl1
@@ -46,7 +46,10 @@ WF_filename = (
 #"pllabdata_20240605_singlepsf_01_slmcube_20240605_seeing_0.4-10-scl0.5_rand_10K_01_proc2_files-combined.npz"
 #psf_file_2 = "pllabdata_20240605_singlepsf_01_slmcube_20240605_seeing_0.4-10-scl0.5_rand_10K_01_proc2_files-combined-PSFs.npz"
 #wf_file_2 = "slmcube_20240605_seeing_0.4-10-scl0.5_rand_10K_01_files-64px_combined.npz"
-
+#sclmix
+#load_precombined_PLims_filename = 'pllabdata_20240605_singlepsf_01_slmcube_20240605_seeing_0.4-10-scl1-scl0.5_mixed_files-combined'
+#precombined_psf_filename = 'pllabdata_20240605_singlepsf_01_slmcube_20240605_seeing_0.4-10-scl1-scl0.5_mixed_files-combined-PSFs'
+#load_precombined_wfims_filename = 'slmcube_20240605_seeing_0.4-10-scl1-scl0.5_mixed_files-combined'
 # ------------------------------------------------------------
 # LP FIT RESULTS
 #
