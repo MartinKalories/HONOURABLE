@@ -416,6 +416,7 @@ print("WF RMSE [rad]:", rmse_wf)
 print("\nCross-check from normalised RMSE:")
 print("PSF RMSE:", rmse_psf_from_norm)
 print("WF RMSE [rad]:", rmse_wf_from_norm)
+print("Standalone N:", len(X_test))
 
 
 # ============================================================
