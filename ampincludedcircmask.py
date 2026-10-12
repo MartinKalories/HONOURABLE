@@ -34,27 +34,30 @@ from lanternfiber import lanternfiber
 # Default settings
 # -------------------------------------------------------------------------
 
-DATADIR = "/home/manav//PL-NN-testdata_forDec2025/"
-#DATADIR = '/Users/manavkalra/Downloads/PL-NN-testdata_forDec2025/'
+#DATADIR = "/home/manav//PL-NN-testdata_forDec2025/"
+DATADIR = '/Users/manavkalra/Downloads/PL-NN-testdata_forDec2025/'
 OUTDIR = DATADIR
 
 WAVEFRONT_NPZ_FILENAME = (
-    "slmcube_20240605_seeing_0.4-10-scl1_rand_10K_01_files-combined.npz"
+    "slmcube_20240605_seeing_0.4-10-scl1-scl0.5_mixed_files-combined.npz"
+)
+NORMFACTS_FILENAME = (
+    "pl2wf2psf_data202407_model01_20260922-2318_normfacts.npz"
 )
 WAVEFRONT_KEY = None
 
 # Fibre parameters. The length units are micrometres throughout this script.
 N_CORE = 1.44
-N_CLADDING = 1.4345
+N_CLADDING = 1.4345 
 WAVELENGTH = 1.55
-CORE_RADIUS = 32.8 / 2
+CORE_RADIUS = 114.5/ 5.81
 
 # LP-mode generation and fitting.
-N_MODES = 17
-N_TEST = 1000
+N_MODES = 27
+N_TEST = 100000
 NPIX = 256          # lanternfiber returns a 2*NPIX by 2*NPIX mode image
 MAX_R = 3           # outer calculation radius in units of the core radius
-PAD_FACTOR = 1   # zero-padding factor applied before the FFT
+PAD_FACTOR = 4   # zero-padding factor applied before the FFT
 PUPIL_RADIUS_PIXELS = 31
 
 # Fourier-grid mapping.
@@ -69,9 +72,9 @@ PUPIL_RADIUS_PIXELS = 31
 #
 # "custom":   maps the target image edges to +/- TARGET_FMAX_X and
 #             +/- TARGET_FMAX_Y, in cycles per micrometre.
-FOURIER_MAPPING_MODE = "custom"
-TARGET_FMAX_X = 0.105
-TARGET_FMAX_Y = 0.105
+FOURIER_MAPPING_MODE = "custom" 
+TARGET_FMAX_X = 0.06
+TARGET_FMAX_Y = 0.06
 
 # Print and save one full-FFT diagnostic image with physical frequency axes.
 SAVE_FOURIER_DIAGNOSTIC = True
@@ -875,6 +878,7 @@ def fit_coeffs_to_target_complex_field(
     phase_residual = wrap_phase(
         target_phase - phase_fit
     )
+    
 
     valid_residual = phase_residual[fit_mask]
 
@@ -962,7 +966,7 @@ def plot_phase_fit_example(
     plt.figure(figsize=(14, 8))
 
     plt.subplot(2, 3, 1)
-    plt.imshow(target_amp_plot, cmap="gray_r", origin="lower", vmin=0, vmax=1)
+    plt.imshow(target_amp_plot, cmap="gray_r", origin="lower", vmin=0, vmax=1, interpolation="nearest")
     plt.title("Assumed target amplitude")
     plt.colorbar()
 
@@ -973,6 +977,7 @@ def plot_phase_fit_example(
         vmin=-np.pi,
         vmax=np.pi,
         origin="lower",
+        interpolation="nearest",
     )
     plt.title("Measured target phase")
     plt.colorbar()
@@ -984,12 +989,13 @@ def plot_phase_fit_example(
         origin="lower",
         vmin=-1,
         vmax=1,
+        interpolation="nearest",
     )
     plt.title("Amplitude residual")
     plt.colorbar()
 
     plt.subplot(2, 3, 4)
-    plt.imshow(fit_amp_plot, cmap="gray_r", origin="lower", vmin=0, vmax=1)
+    plt.imshow(fit_amp_plot, cmap="gray_r", origin="lower", vmin=0, vmax=1, interpolation="nearest")
     plt.title("Fitted LP amplitude")
     plt.colorbar()
 
@@ -1000,6 +1006,7 @@ def plot_phase_fit_example(
         vmin=-np.pi,
         vmax=np.pi,
         origin="lower",
+        interpolation="nearest",
     )
     plt.title("Fitted LP phase")
     plt.colorbar()
@@ -1011,6 +1018,7 @@ def plot_phase_fit_example(
         vmin=-np.pi,
         vmax=np.pi,
         origin="lower",
+        interpolation="nearest"
     )
     plt.title("Wrapped phase residual")
     plt.colorbar()
@@ -1020,6 +1028,207 @@ def plot_phase_fit_example(
     plt.savefig(outpath, dpi=300, bbox_inches="tight")
     plt.close()
 
+def save_fit_video(
+    all_target_phases,
+    all_fitted_phases,
+    rms_phase_errors,
+    outpath,
+    radius_pixels=31,
+    fps=10,
+    max_frames=200,
+):
+    from matplotlib.animation import FuncAnimation, FFMpegWriter
+
+    n_total = len(all_target_phases)
+
+    # Select frames evenly across the complete dataset.
+    # e.g. 200 frames from your 10,000 fits.
+    n_frames = min(max_frames, n_total)
+
+    frame_indices = np.linspace(
+        0,
+        n_total - 1,
+        n_frames,
+        dtype=int
+    )
+
+    # Same pupil used for fitting
+    fit_mask = make_circular_mask(
+        all_target_phases.shape[1:],
+        radius_pixels=radius_pixels
+    )
+
+    # Wrapped residual for every fit
+    residuals = wrap_phase(
+        all_target_phases - all_fitted_phases
+    )
+
+    fig, axes = plt.subplots(
+        1,
+        3,
+        figsize=(15, 5)
+    )
+
+    first_index = frame_indices[0]
+
+    target_plot = np.where(
+        fit_mask,
+        all_target_phases[first_index],
+        np.nan
+    )
+
+    fit_plot = np.where(
+        fit_mask,
+        all_fitted_phases[first_index],
+        np.nan
+    )
+
+    residual_plot = np.where(
+        fit_mask,
+        residuals[first_index],
+        np.nan
+    )
+
+    # ---------------------------------------------------------
+    # Target phase
+    # ---------------------------------------------------------
+
+    im_target = axes[0].imshow(
+        target_plot,
+        cmap="twilight",
+        vmin=-np.pi,
+        vmax=np.pi,
+        origin="lower"
+    )
+
+    axes[0].set_title("Target phase")
+    axes[0].set_xticks([])
+    axes[0].set_yticks([])
+
+    plt.colorbar(
+        im_target,
+        ax=axes[0],
+        label="Phase [rad]"
+    )
+
+    # ---------------------------------------------------------
+    # Fitted phase
+    # ---------------------------------------------------------
+
+    im_fit = axes[1].imshow(
+        fit_plot,
+        cmap="twilight",
+        vmin=-np.pi,
+        vmax=np.pi,
+        origin="lower"
+    )
+
+    axes[1].set_title("Fitted LP phase")
+    axes[1].set_xticks([])
+    axes[1].set_yticks([])
+
+    plt.colorbar(
+        im_fit,
+        ax=axes[1],
+        label="Phase [rad]"
+    )
+
+    # ---------------------------------------------------------
+    # Residual
+    # ---------------------------------------------------------
+
+    im_residual = axes[2].imshow(
+        residual_plot,
+        cmap="bwr",
+        vmin=-np.pi,
+        vmax=np.pi,
+        origin="lower"
+    )
+
+    axes[2].set_title("Wrapped phase residual")
+    axes[2].set_xticks([])
+    axes[2].set_yticks([])
+
+    plt.colorbar(
+        im_residual,
+        ax=axes[2],
+        label="Residual [rad]"
+    )
+
+    main_title = fig.suptitle(
+        ""
+    )
+
+    plt.tight_layout()
+
+    # ---------------------------------------------------------
+    # Update one animation frame
+    # ---------------------------------------------------------
+
+    def update(frame_number):
+
+        index = frame_indices[frame_number]
+
+        target = np.where(
+            fit_mask,
+            all_target_phases[index],
+            np.nan
+        )
+
+        fitted = np.where(
+            fit_mask,
+            all_fitted_phases[index],
+            np.nan
+        )
+
+        residual = np.where(
+            fit_mask,
+            residuals[index],
+            np.nan
+        )
+
+        im_target.set_data(target)
+        im_fit.set_data(fitted)
+        im_residual.set_data(residual)
+
+        main_title.set_text(
+            f"Wavefront {index + 1}/{n_total}   |   "
+            f"RMS phase error = "
+            f"{rms_phase_errors[index]:.3f} rad"
+        )
+
+        return (
+            im_target,
+            im_fit,
+            im_residual,
+            main_title
+        )
+
+    animation = FuncAnimation(
+        fig,
+        update,
+        frames=n_frames,
+        interval=1000 / fps,
+        blit=False
+    )
+
+    writer = FFMpegWriter(
+        fps=fps,
+        bitrate=3000
+    )
+
+    animation.save(
+        outpath,
+        writer=writer,
+        dpi=150
+    )
+
+    plt.close(fig)
+
+    print(
+        "Saved fit video to:",
+        outpath
+    )
 
 def save_coeff_plot(
     coeffs: np.ndarray,
@@ -1101,6 +1310,15 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    # Load the same WF normalisation factors used by the neural network.
+    normfacts = np.load(os.path.join(DATADIR, NORMFACTS_FILENAME))
+    WF_normfacts = normfacts["WF"]
+    WF_mean = WF_normfacts[0]
+    WF_std = WF_normfacts[2]
+
+    print("WF mean:", WF_mean)
+    print("WF std:", WF_std)
+
     if args.n_modes <= 0:
         raise ValueError("--n-modes must be positive.")
     if args.n_test <= 0:
@@ -1113,7 +1331,7 @@ def main() -> None:
     plot_crop_pixels = (
         None if args.plot_crop_pixels < 0 else args.plot_crop_pixels
     )
-    
+
     os.makedirs(OUTDIR, exist_ok=True)
 
     wavefronts, wavefront_path, wavefront_key = load_wavefronts(
@@ -1161,7 +1379,8 @@ def main() -> None:
     mean_abs_phase_errors = []
     coeffs_all = []
     rms_complex_errors = []
-  
+    all_target_phases = []
+    all_fitted_phases = []
 
     example_target = None
     example_target_amplitude = None
@@ -1171,88 +1390,155 @@ def main() -> None:
     example_mask = None
 
     for index in range(n_test):
-       print(f"\nFitting wavefront {index + 1}/{n_test}")
+        print(f"\nFitting wavefront {index + 1}/{n_test}")
 
-       target_phase = prepare_target_phase(wavefronts[index])
+        target_phase = prepare_target_phase(wavefronts[index])
 
-    # Fit uses the same centre crop as the modes, if enabled.
-       target_phase = centre_crop(target_phase, fit_crop_pixels)
-       # Use the final/highest-index LP mode as the synthetic target.
-     
+        # Fit uses the same centre crop as the modes, if enabled.
+        target_phase = centre_crop(target_phase, fit_crop_pixels)
 
-       target_amplitude, target_complex_wf = make_assumed_amplitude_wavefront(
-           target_phase,
-           radius_pixels=PUPIL_RADIUS_PIXELS,
-       )
+        target_amplitude, target_complex_wf = make_assumed_amplitude_wavefront(
+            target_phase,
+            radius_pixels=PUPIL_RADIUS_PIXELS,
+        )
 
-       if PUPIL_RADIUS_PIXELS is None:
-           fit_mask = None
-       else:
-           fit_mask = make_circular_mask(
-               target_phase.shape,
-               radius_pixels=PUPIL_RADIUS_PIXELS,
-           )
+        if PUPIL_RADIUS_PIXELS is None:
+            fit_mask = None
+        else:
+            fit_mask = make_circular_mask(
+                target_phase.shape,
+                radius_pixels=PUPIL_RADIUS_PIXELS,
+            )
 
-       coeffs_fit, field_fit, phase_fit, phase_residual, rms_err, mae_err, complex_err = (
-        fit_coeffs_to_target_complex_field(
+        (
+            coeffs_fit,
+            field_fit,
+            phase_fit,
+            phase_residual,
+            rms_err,
+            mae_err,
+            complex_err,
+        ) = fit_coeffs_to_target_complex_field(
             mode_matrix=mode_matrix,
             target_complex_wf=target_complex_wf,
             target_phase=target_phase,
             fit_mask=fit_mask,
         )
-    )
-       # ============================================================
-       # TEST: show only the largest/highest available LP mode
-       # Comment out this block to return to the normal fitted result.
-       # ============================================================
 
-       #test_mode_index = -1
+        # ============================================================
+        # TEST: show only the largest/highest available LP mode
+        # Comment out this block to return to the normal fitted result.
+        # ============================================================
 
-       #field_fit = far_modes[test_mode_index]
-       #phase_fit = np.angle(field_fit)
-       #phase_residual = wrap_phase(target_phase - phase_fit)
+        # test_mode_index = -1
 
-       #if fit_mask is None:
-        #valid_residual = phase_residual.ravel()
-       #else:
-         #valid_residual = phase_residual[fit_mask]
+        # field_fit = far_modes[test_mode_index]
+        # phase_fit = np.angle(field_fit)
+        # phase_residual = wrap_phase(target_phase - phase_fit)
 
-       #rms_err = np.sqrt(np.mean(valid_residual ** 2))
-       #mae_err = np.mean(np.abs(valid_residual))
+        # if fit_mask is None:
+        #     valid_residual = phase_residual.ravel()
+        # else:
+        #     valid_residual = phase_residual[fit_mask]
 
-# Make the coefficient plot show only the selected mode.
-       #coeffs_fit = np.zeros(args.n_modes, dtype=np.complex128)
-       #coeffs_fit[test_mode_index] = 1.0
+        # rms_err = np.sqrt(np.mean(valid_residual ** 2))
+        # mae_err = np.mean(np.abs(valid_residual))
 
-       fit_amplitude = np.abs(field_fit)
-       fit_complex_wf = field_fit
+        # Make the coefficient plot show only the selected mode.
+        # coeffs_fit = np.zeros(args.n_modes, dtype=np.complex128)
+        # coeffs_fit[test_mode_index] = 1.0
 
-       rms_phase_errors.append(rms_err)
-       mean_abs_phase_errors.append(mae_err)
-       rms_complex_errors.append(complex_err)
-       coeffs_all.append(coeffs_fit)
+        # Store all target and fitted WFs so the final RMSE is calculated
+        # in the same global style as the neural-network code. Keeping this
+        # after the TEST block means the test-mode phase is used if enabled.
+        all_target_phases.append(target_phase)
+        all_fitted_phases.append(phase_fit)
 
-       print("RMS wrapped phase error [rad]:", rms_err)
-       print("Mean absolute wrapped phase error [rad]:", mae_err)
-       print("RMS complex-field error:", complex_err)
+        fit_amplitude = np.abs(field_fit)
+        fit_complex_wf = field_fit
 
-       if index == 0:
-           example_target = target_phase
-           example_target_amplitude = target_amplitude
-           example_field_fit = field_fit
-           example_residual = phase_residual
-           example_coeffs = coeffs_fit
-           example_mask = fit_mask
+        rms_phase_errors.append(rms_err)
+        mean_abs_phase_errors.append(mae_err)
+        rms_complex_errors.append(complex_err)
+        coeffs_all.append(coeffs_fit)
+
+        print("RMS wrapped phase error [rad]:", rms_err)
+        print("Mean absolute wrapped phase error [rad]:", mae_err)
+        print("RMS complex-field error:", complex_err)
+
+        if index == 0:
+            example_target = target_phase
+            example_target_amplitude = target_amplitude
+            example_field_fit = field_fit
+            example_residual = phase_residual
+            example_coeffs = coeffs_fit
+            example_mask = fit_mask
 
     rms_phase_errors = np.asarray(rms_phase_errors)
     mean_abs_phase_errors = np.asarray(mean_abs_phase_errors)
     rms_complex_errors = np.asarray(rms_complex_errors)
     coeffs_all = np.asarray(coeffs_all)
 
+    all_target_phases = np.asarray(all_target_phases)
+    all_fitted_phases = np.asarray(all_fitted_phases)
+
+    # ============================================================
+    # NN-STYLE WF RMSE
+    # ============================================================
+    # Apply the same WF normalisation factors as the neural network,
+    # then calculate one global RMSE over every image and every pixel.
+    target_norm = (all_target_phases - WF_mean) / WF_std
+    fit_norm = (all_fitted_phases - WF_mean) / WF_std
+
+    rmse_wf_nn_style = np.sqrt(
+        np.mean(
+            (fit_norm - target_norm) ** 2
+        )
+    )
+
     crop_label = (
         "full" if fit_crop_pixels is None else f"crop{2 * fit_crop_pixels}px"
     )
     mapping_label = args.fourier_mapping
+    # ============================================================
+    # SAVE VIDEO OF LP FITS
+    # ============================================================
+
+    video_path = os.path.join(
+    OUTDIR,
+    f"WF_phase_LP_fit_video_"
+    f"{args.n_modes}modes_"
+    f"{crop_label}_"
+    f"{mapping_label}.mp4"
+)
+
+    save_fit_video(
+        all_target_phases=all_target_phases,
+        all_fitted_phases=all_fitted_phases,
+        rms_phase_errors=rms_phase_errors,
+        outpath=video_path,
+        radius_pixels=PUPIL_RADIUS_PIXELS,
+        fps=10,
+        max_frames=200,
+    )
+    # ============================================================
+# GLOBAL WF RMSE
+# Convert LP phases from [-pi, pi] to [0, 2pi]
+# to match the NN wavefront convention
+# ============================================================
+
+    target_0_2pi = np.mod(
+    all_target_phases,
+    2 * np.pi
+    )
+
+    fit_0_2pi = np.mod(
+    all_fitted_phases,
+    2 * np.pi
+    )
+
+    global_wf_rmse = np.sqrt(np.mean((fit_0_2pi - target_0_2pi) ** 2))
+
 
     results_path = os.path.join(
         OUTDIR,
@@ -1265,6 +1551,7 @@ def main() -> None:
         rms_phase_errors=rms_phase_errors,
         mean_abs_phase_errors=mean_abs_phase_errors,
         rms_complex_errors=rms_complex_errors,
+        rmse_wf_nn_style=rmse_wf_nn_style,
         coeffs_all=coeffs_all,
         labels=np.asarray(labels),
         lm_values=lm_values,
@@ -1319,6 +1606,8 @@ def main() -> None:
         ),
         comments="",
     )
+
+    print("WF RMSE:", rmse_wf_nn_style)
     print("Saved CSV summary to:", csv_path)
 
     print("\n==============================")
@@ -1329,10 +1618,12 @@ def main() -> None:
     print("Fit crop:", crop_label)
     print("Fourier mapping:", args.fourier_mapping)
     print("Padding factor:", args.pad_factor)
+    print("NN-style WF RMSE:", rmse_wf_nn_style)
     print("Mean RMS phase error [rad]:", np.mean(rms_phase_errors))
     print("Median RMS phase error [rad]:", np.median(rms_phase_errors))
     print("Mean absolute phase error [rad]:", np.mean(mean_abs_phase_errors))
     print("Mean RMS complex-field error:", np.mean(rms_complex_errors))
+    print("Global WF RMSE [rad]:",global_wf_rmse)
 
     example_plot_path = os.path.join(
         OUTDIR,
@@ -1340,19 +1631,19 @@ def main() -> None:
         f"{crop_label}_{mapping_label}_{run_stamp}.png",
     )
     plot_phase_fit_example(
-       target_phase=example_target,
-       target_amplitude=example_target_amplitude,
-       field_fit=example_field_fit,
-       phase_residual=example_residual,
-       title=(
-           f"Wavefront phase fit using {args.n_modes} far-field LP modes, "
-           f"mean RMS: {np.mean(rms_complex_errors):.3f}"
-           f"({mapping_label})"
-       ),
-       outpath=example_plot_path,
-       plot_crop_pixels=plot_crop_pixels,
-       fit_mask=example_mask,
-   )
+        target_phase=example_target,
+        target_amplitude=example_target_amplitude,
+        field_fit=example_field_fit,
+        phase_residual=example_residual,
+        title=(
+            f"Wavefront phase fit using {args.n_modes} far-field LP modes, "
+            f"WF RMSE: {np.mean(rms_phase_errors):.3f} (rad)"
+            f"({mapping_label})"
+        ),
+        outpath=example_plot_path,
+        plot_crop_pixels=plot_crop_pixels,
+        fit_mask=example_mask,
+    )
     print("Saved example phase plot to:", example_plot_path)
 
     coeff_plot_path = os.path.join(
