@@ -39,10 +39,10 @@ DATADIR = '/Users/manavkalra/Downloads/PL-NN-testdata_forDec2025/'
 OUTDIR = DATADIR
 
 WAVEFRONT_NPZ_FILENAME = (
-    "slmcube_20240605_seeing_0.4-10-scl1-scl0.5_mixed_files-combined.npz"
+    "slmcube_20240605_seeing_0.4-10-scl1_rand_10K_01_files-combined.npz"
 )
 NORMFACTS_FILENAME = (
-    "pl2wf2psf_data202407_model01_20260922-2318_normfacts.npz"
+    "pl2wf2psf_data202407_model01_20260914-2022.keras"
 )
 WAVEFRONT_KEY = None
 
