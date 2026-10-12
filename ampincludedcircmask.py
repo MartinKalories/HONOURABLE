@@ -42,7 +42,7 @@ WAVEFRONT_NPZ_FILENAME = (
     "slmcube_20240605_seeing_0.4-10-scl1_rand_10K_01_files-combined.npz"
 )
 NORMFACTS_FILENAME = (
-    "pl2wf2psf_data202407_model01_20260914-2022.keras"
+    "pl2wf2psf_data202407_model01_20260914-2022_normfacts.npz"
 )
 WAVEFRONT_KEY = None
 
