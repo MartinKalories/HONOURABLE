@@ -140,7 +140,7 @@ def load_checkpoint_if_available():
         random_state=42,
         n_initial_points=2,
     )
-print(opt.models[-1].kernel_)
+
 
 def append_trial_to_csv(trial_entry, filename):
     fieldnames = [
