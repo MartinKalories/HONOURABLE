@@ -314,6 +314,65 @@ print(
     f"{nn_lp_rmse:.4f} rad"
 )
 
+# ============================================================
+# FULL DATASET RMSE COMPARISON
+# ============================================================
+
+nn_true_residual_all = wrap_phase(
+    nn_wf - true_wf
+)
+
+nn_lp_residual_all = wrap_phase(
+    nn_wf - lp_wf
+)
+
+# Per-image RMSE
+nn_true_per_image = np.sqrt(
+    np.mean(
+        nn_true_residual_all[:, pupil_mask]**2,
+        axis=1
+    )
+)
+
+nn_lp_per_image = np.sqrt(
+    np.mean(
+        nn_lp_residual_all[:, pupil_mask]**2,
+        axis=1
+    )
+)
+
+# Mean per-image RMSE
+nn_true_mean = np.mean(nn_true_per_image)
+nn_lp_mean = np.mean(nn_lp_per_image)
+
+# Global RMSE
+nn_true_global = np.sqrt(
+    np.mean(
+        nn_true_residual_all[:, pupil_mask]**2
+    )
+)
+
+nn_lp_global = np.sqrt(
+    np.mean(
+        nn_lp_residual_all[:, pupil_mask]**2
+    )
+)
+
+print("\nFULL DATASET RESULTS")
+print("-----------------------------")
+print(f"Number of images: {n_compare}")
+
+print(f"NN vs True mean RMSE: {nn_true_mean:.4f}")
+print(f"NN vs LP mean RMSE:   {nn_lp_mean:.4f}")
+
+print(f"NN vs True global RMSE: {nn_true_global:.4f}")
+print(f"NN vs LP global RMSE:   {nn_lp_global:.4f}")
+
+print("\nSINGLE IMAGE RESULTS")
+print("-----------------------------")
+print(f"NN vs True: {nn_true_rmse:.4f}")
+print(f"NN vs LP:   {nn_lp_rmse:.4f}")
+
 
 # ============================================================
 # MASK OUTSIDE PUPIL
