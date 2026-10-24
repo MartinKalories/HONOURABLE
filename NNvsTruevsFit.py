@@ -33,7 +33,7 @@ LP_RESULTS_FILE = (
 PUPIL_RADIUS_PIXELS = 31
 
 # Which image to display
-IMAGE_INDEX = 32
+IMAGE_INDEX = 1832
 
 # Save figure?
 SAVE_FIGURE = True
