@@ -19,19 +19,15 @@ normfacts_filename = (
 )
 
 PL_filename = (
-    "pllabdata_20240605_singlepsf_01_"
-    "slmcube_20240605_seeing_0.4-10-scl0.5_rand_10K_01_"
-    "proc2_files-combined.npz"
+    "pllabdata_20240605_singlepsf_01_slmcube_20240605_seeing_0.4-10-scl1_rand_10K_01_files-combined.npz"
 )
 
 WF_filename = (
-    "slmcube_20240605_seeing_0.4-10-scl0.5_rand_10K_01_"
-    "files-64px_combined.npz"
+   "slmcube_20240605_seeing_0.4-10-scl1_rand_10K_01_files-combined.npz"
 )
 
 LP_RESULTS_FILE = (
-    "WF_phase_farfieldLP_fit_results_100000wfs_"
-    "27modes_full_custom_20261003_220237.npz"
+ "WF_phase_farfieldLP_fit_results_100000wfs_27modes_full_custom_20261003_204706.npz"
 )
 
 PUPIL_RADIUS_PIXELS = 31
