@@ -23,7 +23,11 @@ PL_filename = (
 )
 
 WF_filename = (
-    "slmcube_20240605_seeing_0.4-10-scl1-scl0.5_mixed_files-combined.npz"
+   "slmcube_20240605_seeing_0.4-10-scl1-scl0.5_mixed_files-combined.npz"
+)
+
+LP_RESULTS_FILE = (
+ "WF_phase_farfieldLP_fit_results_100000wfs_27modes_full_custom_20261004_132248.npz"
 )
 
 PUPIL_RADIUS_PIXELS = 31
