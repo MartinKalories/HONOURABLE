@@ -19,7 +19,7 @@ normfacts_filename = (
 )
 
 PL_filename = (
-      "pllabdata_20240605_singlepsf_01_slmcube_20240605_seeing_0.4-10-scl1-scl0.5_mixed_files-combined.npz
+      "pllabdata_20240605_singlepsf_01_slmcube_20240605_seeing_0.4-10-scl1-scl0.5_mixed_files-combined.npz"
 )
 
 WF_filename = (
