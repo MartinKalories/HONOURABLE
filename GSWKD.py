@@ -1,13 +1,16 @@
 from pathlib import Path
 from itertools import combinations
 
+# import matplotlib
+# matplotlib.use('TkAgg')
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
 from scipy.stats import gaussian_kde
 from scipy.integrate import trapezoid
-from scipy.optimize import differential_evolution
+from scipy.optimize import differential_evolution, brentq
 from skopt.space import Real, Integer, Categorical
 from optim_space import space
 from datetime import datetime
@@ -15,6 +18,7 @@ from datetime import datetime
 # File path
 # ==================================================
 DATA_DIR = Path("/home/manav/PL-NN-testdata_forDec2025/")
+#DATA_DIR = Path("./data/")
 DEFAULT_CSV = "bayesopt_better_seeing_nosub_noLR_all_trials_all_trials.csv"
 
 csv_path = DATA_DIR / DEFAULT_CSV
@@ -24,14 +28,94 @@ print("Loaded:", csv_path)
 
 
 # ==================================================
-# Settings
+# USER SETTINGS
+# Every parameter that changes the analysis results is set here.
 # ==================================================
+
+# Column in the CSV used as the loss (lower = better).
 loss_col = "objective_val_loss"
 
+# Temperature for the trial weights: w = exp(-(loss - min_loss) / T).
+# Same units as the loss.
 # Lower T makes only the best trials matter strongly.
 # Higher T gives smoother weighting across more trials.
-T = 0.05
+# If T is much larger than the spread of the losses, every trial gets almost the
+# same weight and the KDEs only show where the optimiser placed trials.
+# None = choose T automatically so the effective number of trials is TARGET_N_EFF
+# (recommended, because a sensible T depends on how spread out the losses are).
+# A number = use that T directly.
+T = None
 
+# Effective number of trials, n_eff = 1 / sum(w^2), used to choose T when T is None.
+# Smaller = only the very best trials count (more selective, but noisier KDEs).
+# Larger = more trials count (smoother, but less selective).
+TARGET_N_EFF = 30
+
+# Bandwidth for the 1D KDEs and the joint continuous KDE (scipy gaussian_kde).
+# None or "scott" = Scott's rule, "silverman" = Silverman's rule,
+# a number = scale factor applied to the weighted covariance.
+BW_METHOD = None
+
+# Scale factor for the Scott's-rule bandwidths in the 2D KDEs:
+# bw = BW_SCALE_2D * std * n_eff^(-1/6), where n_eff is the effective number of trials.
+# Below 1 gives sharper, more detailed contours; above 1 gives smoother ones.
+# Does not affect variables listed in MANUAL_BW.
+BW_SCALE_2D = 1.0
+
+# Fixed bandwidths for the 2D KDEs, in the variable's own units.
+# Variables not listed here use Scott's rule scaled by BW_SCALE_2D.
+MANUAL_BW = {
+    "ksz_psf": 1,
+    "ksz_wf": 1,
+
+    "nfilts_psf": 32,
+    "nfilts_wf": 32,
+    "nfilts_enc": 32,
+}
+
+# Edge correction (reflection method). A Gaussian kernel near the edge of the search
+# space puts part of its mass outside the range, so without correction the KDE is
+# artificially low near the edges (about half height right at an edge).
+# True = add mirror-image kernels about each bound, folding that mass back inside.
+# Bounds are the search-space bounds from optim_space.py (for discrete variables,
+# the smallest and largest values tried).
+# Applies to the 1D curves, the 2D panels and the joint continuous optimum.
+# False = no edge correction.
+REFLECT_AT_BOUNDS = False
+
+# What the 1D curves and 2D panels show.
+# False = weighted KDE (previous behaviour): density of trials, each weighted by its
+#         Boltzmann weight. High where many trials were run, as well as where trials
+#         were good.
+# True  = kernel regression: weighted KDE / unweighted KDE, with the same bandwidths.
+#         This is the local average Boltzmann weight around each point, normalised to
+#         unit area. It does not depend on how many trials were run in each region.
+# The joint continuous optimum always uses the weighted KDE.
+USE_KERNEL_REGRESSION = True
+
+# Settings for differential_evolution when finding the joint continuous KDE optimum.
+DE_SEED = 42
+DE_POLISH = True
+
+
+# ==================================================
+# OUTPUT SETTINGS
+# Choose which plots and summaries to produce (True = make it).
+# ==================================================
+MAKE_CORNER_PLOT = True              # 2D_KDE_corner_plot_*.png
+SHOW_CORNER_PLOT = True              # keep the corner plot window open after the script finishes
+SQUARE_CORNER_PANELS = False          # force every corner plot panel to be square (False = matplotlib's default layout)
+MAKE_1D_KDE_PLOTS = False            # 1D_*.png and KDE_1D_*.csv
+MAKE_2D_KDE_PLOTS = False            # 2D_KDE_*_vs_*.png and KDE_2D_ALL_VARIABLES_*.csv
+MAKE_KERNEL_GROUPED_1D_PLOTS = False # 1D_KDE_*_grouped_by_ksz_*.png
+MAKE_DISCRETE_EFFECT_PLOTS = False   # variable_effect_*.png and DISCRETE_VARIABLE_EFFECTS_*.csv
+MAKE_CONTINUOUS_EFFECT_PLOTS = False # continuous_effect_*.png
+SAVE_BEST_TRIAL_SUMMARY = False      # BEST_TRIAL_*.csv
+
+
+# ==================================================
+# Variables from the optimiser search space (optim_space.py)
+# ==================================================
 active_dims = [dim for dim in space if dim.name is not None]
 
 continuous_params = [
@@ -101,8 +185,48 @@ print("Plots will be saved to:", output_dir)
 # Convert loss into goodness weights
 # Lower loss = better
 # ==================================================
-goodness = np.exp(-(loss - loss.min()) / T)
-weights = goodness / goodness.sum()
+def boltzmann_weights(loss, T):
+    goodness = np.exp(-(loss - loss.min()) / T)
+    return goodness / goodness.sum()
+
+
+def effective_sample_size(w):
+    """Kish effective number of trials, 1 / sum(w^2), for weights that sum to 1."""
+    w = np.asarray(w, dtype=float)
+    w = w / w.sum()
+    return 1.0 / np.sum(w ** 2)
+
+
+def temperature_for_n_eff(loss, target_n_eff):
+    """Finds the T at which the Boltzmann weights have the requested n_eff."""
+    n = len(loss)
+    spread = loss.max() - loss.min()
+
+    if not 1 < target_n_eff < n:
+        raise ValueError(f"TARGET_N_EFF must be between 1 and the number of trials ({n}).")
+
+    if spread <= 0:
+        raise ValueError("All losses are equal, so T cannot be chosen from n_eff.")
+
+    # n_eff rises from ~1 (T -> 0) to n (T -> infinity), so solve for log(T)
+    def n_eff_error(log_T):
+        return effective_sample_size(boltzmann_weights(loss, np.exp(log_T))) - target_n_eff
+
+    log_T = brentq(n_eff_error, np.log(spread * 1e-6), np.log(spread * 1e6))
+
+    return float(np.exp(log_T))
+
+
+if T is None:
+    T = temperature_for_n_eff(loss, TARGET_N_EFF)
+    print(f"T chosen automatically for n_eff = {TARGET_N_EFF}")
+
+weights = boltzmann_weights(loss, T)
+
+print(
+    f"Trial weights: T = {T:.4g} (loss range {loss.max() - loss.min():.4g}), "
+    f"effective number of trials = {effective_sample_size(weights):.1f} of {len(weights)}"
+)
 
 df["kde_weight"] = weights
 
@@ -120,7 +244,7 @@ samples = make_continuous_samples(df)
 # ==================================================
 # KDE helper functions
 # ==================================================
-def kde_bandwidth(data, weights=None, bw_method=None):
+def kde_bandwidth(data, weights=None, bw_method=BW_METHOD):
     data = np.asarray(data, dtype=float)
 
     if data.ndim == 1:
@@ -138,47 +262,90 @@ def kde_bandwidth(data, weights=None, bw_method=None):
     except np.linalg.LinAlgError:
         return None
 
-def kde_1d(x, w, grids=400, bw_method=None):
+def variable_bounds(var_name, values):
+    """
+    Range used for the KDE grid and the edge reflection.
+    Continuous variables: the search-space bounds from optim_space.py.
+    Anything else: the smallest and largest values in the data.
+    """
+    dim = space_by_name.get(var_name)
+
+    if isinstance(dim, (Real, Integer)):
+        return float(dim.low), float(dim.high)
+
+    values = np.asarray(values, dtype=float)
+    return float(values.min()), float(values.max())
+
+
+def axis_kernels(grid, data, bw, bounds):
+    """
+    Gaussian kernel values along one axis, shape (n_data, n_grid).
+    With REFLECT_AT_BOUNDS, each trial also gets mirror-image kernels about
+    both bounds, so kernel mass that would spill past an edge is folded back.
+    """
+    centres = [data]
+
+    if REFLECT_AT_BOUNDS:
+        lo, hi = bounds
+        centres += [2 * lo - data, 2 * hi - data]
+
+    k = sum(
+        np.exp(-0.5 * ((grid[np.newaxis, :] - c[:, np.newaxis]) / bw) ** 2)
+        for c in centres
+    )
+
+    return k / (np.sqrt(2 * np.pi) * bw)
+
+
+def combine_kernel_sums(weighted_sum, unweighted_sum):
+    """
+    Weighted KDE, or with USE_KERNEL_REGRESSION the kernel regression
+    weighted KDE / unweighted KDE (the local average weight).
+    """
+    if not USE_KERNEL_REGRESSION:
+        return weighted_sum
+
+    return weighted_sum / np.maximum(unweighted_sum, 1e-300)
+
+
+def kde_1d(x, w, grids=400, bw_method=BW_METHOD, var_name=None):
+    """
+    1D weighted KDE (or kernel regression, see USE_KERNEL_REGRESSION) on a
+    grid spanning variable_bounds(var_name), normalised to unit area.
+    The bandwidth comes from scipy's gaussian_kde (BW_METHOD).
+    """
     x = np.asarray(x, dtype=float)
     w = np.asarray(w, dtype=float)
+    w = w / w.sum()
 
     if np.std(x) < 1e-12:
         return None, None
 
-    try:
-        kde = gaussian_kde(
-            x[np.newaxis, :],
-            weights=w,
-            bw_method=bw_method,
-        )
+    bw = kde_bandwidth(x, w, bw_method=bw_method)
 
-        grid = np.linspace(x.min(), x.max(), grids)
-        pdf = kde(grid[np.newaxis, :])
-
-        area = trapezoid(pdf, grid)
-        if area > 0:
-            pdf /= area
-
-        return grid, pdf
-
-    except np.linalg.LinAlgError:
+    if bw is None:
         return None, None
-MANUAL_BW = {
-    "ksz_psf": 1,
-    "ksz_wf": 1,
 
-    "nfilts_psf": 32,
-    "nfilts_wf": 32,
-    "nfilts_enc": 32,
-}
+    bounds = variable_bounds(var_name, x)
+    grid = np.linspace(bounds[0], bounds[1], grids)
+
+    K = axis_kernels(grid, x, bw[0], bounds)
+    pdf = combine_kernel_sums(w @ K, K.mean(axis=0))
+
+    area = trapezoid(pdf, grid)
+    if area > 0:
+        pdf /= area
+
+    return grid, pdf
 
 
-def get_bandwidth(values, var_name, d=1):
+def get_bandwidth(values, var_name, d=1, weights=None):
     """
     Returns the KDE bandwidth for one variable.
 
     If var_name is in MANUAL_BW, it uses the manual value.
-    Otherwise it uses Scott's-rule style bandwidth.
+    Otherwise it uses Scott's-rule style bandwidth, multiplied by BW_SCALE_2D,
+    with the effective number of trials from the weights (all trials if no weights).
     """
 
     values = np.asarray(values, dtype=float)
@@ -187,16 +354,17 @@ def get_bandwidth(values, var_name, d=1):
         return MANUAL_BW[var_name]
 
     std = np.std(values, ddof=1)
-    n = len(values)
+    n = len(values) if weights is None else effective_sample_size(weights)
 
     if std < 1e-12 or n <= 1:
         return None
 
-    return std * n ** (-1 / (d + 4))
+    return BW_SCALE_2D * std * n ** (-1 / (d + 4))
 
 def kde_2d(x, y, w, x_name=None, y_name=None, grids=200):
     """
-    2D weighted KDE with separate bandwidths for x and y.
+    2D weighted KDE (or kernel regression, see USE_KERNEL_REGRESSION) with
+    separate bandwidths for x and y, on a grid spanning variable_bounds.
 
     If x_name or y_name appears in MANUAL_BW, that manual bandwidth is used.
     Otherwise Scott's-rule style bandwidth is used.
@@ -209,26 +377,31 @@ def kde_2d(x, y, w, x_name=None, y_name=None, grids=200):
     # Normalise weights
     w = w / (np.sum(w) + 1e-12)
 
-    xg = np.linspace(x.min(), x.max(), grids)
-    yg = np.linspace(y.min(), y.max(), grids)
+    x_bounds = variable_bounds(x_name, x)
+    y_bounds = variable_bounds(y_name, y)
+
+    xg = np.linspace(x_bounds[0], x_bounds[1], grids)
+    yg = np.linspace(y_bounds[0], y_bounds[1], grids)
 
     X, Y = np.meshgrid(xg, yg)
 
-    bw_x = get_bandwidth(x, x_name, d=2)
-    bw_y = get_bandwidth(y, y_name, d=2)
+    bw_x = get_bandwidth(x, x_name, d=2, weights=w)
+    bw_y = get_bandwidth(y, y_name, d=2, weights=w)
 
     if bw_x is None or bw_y is None:
         return X, Y, None
 
-    Z = np.zeros_like(X, dtype=float)
+    Kx = axis_kernels(xg, x, bw_x, x_bounds)
+    Ky = axis_kernels(yg, y, bw_y, y_bounds)
 
-    for xi, yi, wi in zip(x, y, w):
-        Z += wi * np.exp(
-            -0.5 * (
-                ((X - xi) / bw_x) ** 2
-                + ((Y - yi) / bw_y) ** 2
-            )
-        ) / (2 * np.pi * bw_x * bw_y)
+    # Sum over trials of w_i * Ky_i(y) * Kx_i(x), with rows = y to match meshgrid
+    weighted_sum = (Ky * w[:, np.newaxis]).T @ Kx
+    unweighted_sum = Ky.T @ Kx / len(x)
+
+    Z = combine_kernel_sums(weighted_sum, unweighted_sum)
+
+    if USE_KERNEL_REGRESSION:
+        Z /= trapezoid(trapezoid(Z, xg, axis=1), yg)
 
     return X, Y, Z
 
@@ -236,11 +409,10 @@ def kde_2d(x, y, w, x_name=None, y_name=None, grids=200):
 # ==================================================
 # Find continuous 5D KDE optimum
 # ==================================================
-def find_5d_kde_optimum(df, loss, csv_path, T, bw_method=None):
+def find_5d_kde_optimum(df, loss, csv_path, T, bw_method=BW_METHOD):
     samples_5d = make_continuous_samples(df)
 
-    goodness_5d = np.exp(-(loss - loss.min()) / T)
-    weights_5d = goodness_5d / goodness_5d.sum()
+    weights_5d = boltzmann_weights(loss, T)
 
     try:
         kde = gaussian_kde(
@@ -252,20 +424,33 @@ def find_5d_kde_optimum(df, loss, csv_path, T, bw_method=None):
         print("Could not compute 5D KDE optimum because the covariance matrix was singular.")
         return None, None
 
+    # Search over the full search space, not just the range of the trials
     bounds = [
-        (samples_5d[:, k].min(), samples_5d[:, k].max())
-        for k in range(samples_5d.shape[1])
+        variable_bounds(name, samples_5d[:, k])
+        for k, name in enumerate(continuous_params)
     ]
 
     def negative_kde_density(x):
-        x = np.asarray(x).reshape(len(continuous_params), 1)
-        return -kde(x)[0]
+        points = np.asarray(x, dtype=float).reshape(len(continuous_params), 1)
+
+        # Edge correction: evaluating at the point and at its mirror images about
+        # every bound equals adding mirror-image kernels (exact even though the
+        # kernel covariance has correlations between variables)
+        if REFLECT_AT_BOUNDS:
+            for k, (lo, hi) in enumerate(bounds):
+                low_mirror = points.copy()
+                low_mirror[k] = 2 * lo - low_mirror[k]
+                high_mirror = points.copy()
+                high_mirror[k] = 2 * hi - high_mirror[k]
+                points = np.concatenate([points, low_mirror, high_mirror], axis=1)
+
+        return -kde(points).sum()
 
     result = differential_evolution(
         negative_kde_density,
         bounds=bounds,
-        seed=42,
-        polish=True,
+        seed=DE_SEED,
+        polish=DE_POLISH,
     )
 
     optimum_5d_transformed = result.x
@@ -329,7 +514,7 @@ def plot_kde_1d(samples, weights, labels, csv_path, grids=400):
         else:
             bw_label = "NA"
 
-        grid, pdf = kde_1d(x, weights, grids=grids)
+        grid, pdf = kde_1d(x, weights, grids=grids, var_name=labels[k])
 
         if grid is None:
             print(f"Skipping 1D KDE for {labels[k]}: not enough variation.")
@@ -740,8 +925,8 @@ def plot_all_2d_kde_pairs(
 
         x_label = variable_info[col_x]["label"]
         y_label = variable_info[col_y]["label"]
-        bw_x = get_bandwidth(x, col_x, d=2)
-        bw_y = get_bandwidth(y, col_y, d=2)
+        bw_x = get_bandwidth(x, col_x, d=2, weights=weights)
+        bw_y = get_bandwidth(y, col_y, d=2, weights=weights)
 
         if bw_x is not None and bw_y is not None:
             bw_x_label = f"{bw_x:.3g}"
@@ -905,7 +1090,7 @@ def plot_all_2d_kde_pairs(
                 variable_info[col_y]["ticklabels"],
             )
 
-        plt.colorbar(cf, label="Weighted KDE density")
+        plt.colorbar(cf, label="Kernel regression PDF" if USE_KERNEL_REGRESSION else "Weighted KDE density")
         plt.colorbar(sc, label="Objective validation loss")
 
         plt.legend()
@@ -1018,6 +1203,10 @@ def plot_2d_kde_corner(
         for col, col_x in enumerate(columns):
             ax = axes[row, col]
 
+            # Keep every panel square, whatever the axis ranges or label sizes
+            if SQUARE_CORNER_PANELS:
+                ax.set_box_aspect(1)
+
             x_label = variable_info[col_x]["label"]
             y_label = variable_info[col_y]["label"]
 
@@ -1037,6 +1226,7 @@ def plot_2d_kde_corner(
                         x_diag,
                         weights,
                         grids=grids,
+                        var_name=col_x,
                     )
 
                     bw = kde_bandwidth(x_diag, weights)
@@ -1251,14 +1441,21 @@ def plot_2d_kde_corner(
             else:
                 ax.set_yticklabels([])
 
-    fig.suptitle("2D KDE corner plot", fontsize=16)
+    estimator = "kernel regression" if USE_KERNEL_REGRESSION else "weighted KDE"
+    fig.suptitle(
+        f"2D KDE corner plot ({estimator}, T = {T:.3g}, "
+        f"n_eff = {effective_sample_size(weights):.0f})",
+        fontsize=16,
+    )
     fig.tight_layout()
 
     save_path = output_dir / f"2D_KDE_corner_plot_{csv_path.stem}.png"
     fig.savefig(save_path, dpi=300, bbox_inches="tight")
-    plt.close(fig)
 
     print("2D KDE corner plot saved to:", save_path)
+
+    # Left open so it can be shown at the end of the run
+    return fig
 # ==================================================
 # Overlay kernel sizes onto the 1D KDE plots
 # using fixed colours and a normal legend
@@ -1323,6 +1520,7 @@ def plot_kernel_sizes_on_1d_kde(samples, weights, labels, df, csv_path, grids=40
                 x,
                 weights,
                 grids=grids,
+                var_name=labels[k],
             )
 
             if grid is None:
@@ -1601,6 +1799,7 @@ if __name__ == "__main__":
 
     # ------------------------------
     # Continuous 5D KDE optimum
+    # Always computed: it is marked on the corner plot and 2D plots.
     # ------------------------------
     optimum_5d_transformed, optimum_5d_physical = find_5d_kde_optimum(
         df=df,
@@ -1609,16 +1808,17 @@ if __name__ == "__main__":
         T=T,
     )
     kde_continuous_point = make_continuous_optimum_dict(optimum_5d_transformed)
-    
+
     # ------------------------------
     # 1D continuous KDE plots
     # ------------------------------
-    plot_kde_1d(
-        samples=samples,
-        weights=weights,
-        labels=continuous_labels,
-        csv_path=csv_path,
-    )
+    if MAKE_1D_KDE_PLOTS:
+        plot_kde_1d(
+            samples=samples,
+            weights=weights,
+            labels=continuous_labels,
+            csv_path=csv_path,
+        )
 
     # ------------------------------
     # All 2D KDE projections
@@ -1627,52 +1827,76 @@ if __name__ == "__main__":
     # continuous vs discrete
     # discrete vs discrete
     # ------------------------------
-    all_2d_kde_df = plot_all_2d_kde_pairs(
-        df=df,
-        weights=weights,
-        csv_path=csv_path,
-        kde5d_continuous_point=kde_continuous_point,
-    )
+    if MAKE_2D_KDE_PLOTS:
+        all_2d_kde_df = plot_all_2d_kde_pairs(
+            df=df,
+            weights=weights,
+            csv_path=csv_path,
+            kde5d_continuous_point=kde_continuous_point,
+        )
 
     # ------------------------------
     # 1D KDE plots grouped by kernel size
     # Uses legend colours instead of colour bar
     # ------------------------------
-    plot_kernel_sizes_on_1d_kde(
-        samples=samples,
-        weights=weights,
-        labels=continuous_labels,
-        df=df,
-        csv_path=csv_path,
-    )
+    if MAKE_KERNEL_GROUPED_1D_PLOTS:
+        plot_kernel_sizes_on_1d_kde(
+            samples=samples,
+            weights=weights,
+            labels=continuous_labels,
+            df=df,
+            csv_path=csv_path,
+        )
 
     # ------------------------------
     # Discrete variable effect plots
     # ------------------------------
-    discrete_summary_df = plot_discrete_variable_effects(
-        df=df,
-        csv_path=csv_path,
-    )
+    if MAKE_DISCRETE_EFFECT_PLOTS:
+        discrete_summary_df = plot_discrete_variable_effects(
+            df=df,
+            csv_path=csv_path,
+        )
 
     # ------------------------------
     # Continuous variable effect scatter plots
     # ------------------------------
-    plot_continuous_variable_effects(
-        df=df,
-        csv_path=csv_path,
-    )
-    plot_2d_kde_corner(
-        df=df,
-        weights=weights,
-        csv_path=csv_path,
-        kde_continuous_point=kde_continuous_point,
-    )
+    if MAKE_CONTINUOUS_EFFECT_PLOTS:
+        plot_continuous_variable_effects(
+            df=df,
+            csv_path=csv_path,
+        )
+
+    # ------------------------------
+    # 2D KDE corner plot
+    # ------------------------------
+    corner_fig = None
+
+    if MAKE_CORNER_PLOT:
+        corner_fig = plot_2d_kde_corner(
+            df=df,
+            weights=weights,
+            csv_path=csv_path,
+            kde_continuous_point=kde_continuous_point,
+        )
+
+        if not SHOW_CORNER_PLOT:
+            plt.close(corner_fig)
+            corner_fig = None
+
     # ------------------------------
     # Best trial summary
     # ------------------------------
-    save_best_trial_summary(
-        df=df,
-        csv_path=csv_path,
-    )
+    if SAVE_BEST_TRIAL_SUMMARY:
+        save_best_trial_summary(
+            df=df,
+            csv_path=csv_path,
+        )
 
     print("\nAll analysis complete.")
+
+    # ------------------------------
+    # Show the corner plot, left open after the script finishes
+    # ------------------------------
+    if corner_fig is not None:
+        plt.ion()
+        plt.show(block=False)
