@@ -209,11 +209,19 @@ def plot_histogram(groups, xlabel, title, filename):
             values,
             bins=bins,
             density=True,
-            alpha=0.4,
+            alpha=0.25,
             color=colours[name],
-            edgecolor=colours[name],
-            linewidth=0.6,
             label=f"{name} (n={len(values)})"
+        )
+
+# Thin outline following the histogram shape
+        ax.hist(
+            values,
+            bins=bins,
+            density=True,
+            histtype="step",
+            linewidth=1.2,
+            color=colours[name]
         )
 
         ax.axvline(
