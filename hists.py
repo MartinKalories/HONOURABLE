@@ -211,6 +211,8 @@ def plot_histogram(groups, xlabel, title, filename):
             density=True,
             alpha=0.4,
             color=colours[name],
+            edgecolor=colours[name],
+            linewidth=0.6,
             label=f"{name} (n={len(values)})"
         )
 
