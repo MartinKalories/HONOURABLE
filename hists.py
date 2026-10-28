@@ -14,7 +14,7 @@ OUTPUT_DIR = Path("/home/manav/HONOURABLE")
 PUPIL_RADIUS = 31
 TEST_FRACTION = 0.2
 BATCH_SIZE = 16
-N_BINS = 1000
+N_BINS = 100
 
 # Replace filenames if yours are different.
 # IMPORTANT: Replace the mixed-seeing model placeholder.
