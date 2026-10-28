@@ -213,7 +213,7 @@ def plot_histogram(groups, xlabel, title, filename):
         )
 
     ax.set_xlabel(xlabel)
-    ax.set_ylabel("Probability density")
+    ax.set_ylabel("Probability density (rad$^{-1}$)")
     ax.set_title(title)
 
     ax.legend()
