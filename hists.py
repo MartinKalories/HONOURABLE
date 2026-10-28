@@ -12,7 +12,7 @@ DATA_DIR = Path("/home/manav/PL-NN-testdata_forDec2025/")
 OUTPUT_DIR = Path("/home/manav/HONOURABLE")
 
 PUPIL_RADIUS = 31
-TEST_FRACTION = 1
+TEST_FRACTION = 0.2
 BATCH_SIZE = 16
 N_BINS = 1000
 
@@ -34,7 +34,7 @@ CASES = {
         "pl": "pllabdata_20240605_singlepsf_01_slmcube_20240605_seeing_0.4-10-scl1-scl0.5_mixed_files-combined.npz",
         "wf": "slmcube_20240605_seeing_0.4-10-scl1-scl0.5_mixed_files-combined.npz",
         "model": "pl2wf2psf_data202407_model01_20260922-2318.keras",
-        "max_samples": 1000000,
+        "max_samples": 200000,
     },
 }
 
