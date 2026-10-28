@@ -14,7 +14,7 @@ OUTPUT_DIR = Path("/home/manav/HONOURABLE")
 PUPIL_RADIUS = 31
 TEST_FRACTION = 0.2
 BATCH_SIZE = 16
-N_BINS = 35
+N_BINS = 100
 
 # Replace filenames if yours are different.
 # IMPORTANT: Replace the mixed-seeing model placeholder.
@@ -34,6 +34,7 @@ CASES = {
         "pl": "pllabdata_20240605_singlepsf_01_slmcube_20240605_seeing_0.4-10-scl1-scl0.5_mixed_files-combined.npz",
         "wf": "slmcube_20240605_seeing_0.4-10-scl1-scl0.5_mixed_files-combined.npz",
         "model": "pl2wf2psf_data202407_model01_20260922-2318.keras",
+        "max_samples": 200000,
     },
 }
 
@@ -126,10 +127,18 @@ def load_case(spec):
     # This assumes the first 20% are the held-out test set.
     # Change this if your original split was different.
 
+    # Limit mixed-seeing dataset to 200,000 samples
+    if spec.get("max_samples") is not None:
+        max_samples = spec["max_samples"]
+        pl = pl[:max_samples]
+        wf = wf[:max_samples]
+
+# Select the test fraction
     n = int(len(pl) * TEST_FRACTION)
 
     pl = pl[:n]
     wf = wf[:n]
+
 
     with np.load(norm_path) as norm:
         pl_mean, _, pl_std = norm["PL"]
