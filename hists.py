@@ -317,7 +317,7 @@ def main():
     plot_histogram(
         rmse_results,
         xlabel="NN reconstruction RMSE [rad]",
-        title="Wavefront Reconstruction RMSE for NNs trained on Worse Seeing Data",
+        title="Wavefront Reconstruction RMSE for NNs trained on Mixed Seeing Data",
         filename="nn_reconstruction_rmse_histogram.png"
     )
 
