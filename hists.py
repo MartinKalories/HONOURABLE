@@ -23,20 +23,22 @@ CASES = {
     "Better seeing": {
         "pl": "pllabdata_20240605_singlepsf_01_slmcube_20240605_seeing_0.4-10-scl0.5_rand_10K_01_proc2_files-combined.npz",
         "wf": "slmcube_20240605_seeing_0.4-10-scl0.5_rand_10K_01_files-64px_combined.npz",
-        "model": "pl2wf2psf_data202407_model01_20260914-2022.keras",
+        #"model": "pl2wf2psf_data202407_model01_20260914-2022.keras",
         #"model": "pl2wf2psf_data202407_model01_20260917-2026.keras",
+        "model": "pl2wf2psf_data202407_model01_20260922-2318.keras"
     },
     "Worse seeing": {
         "pl": "pllabdata_20240605_singlepsf_01_slmcube_20240605_seeing_0.4-10-scl1_rand_10K_01_files-combined.npz",
         "wf": "slmcube_20240605_seeing_0.4-10-scl1_rand_10K_01_files-combined.npz",
-        "model": "pl2wf2psf_data202407_model01_20260914-2022.keras",
+        #"model": "pl2wf2psf_data202407_model01_20260914-2022.keras",
         #"model": "pl2wf2psf_data202407_model01_20260917-2026.keras",
+        "model": "pl2wf2psf_data202407_model01_20260922-2318.keras"
     },
     "Mixed seeing": {
         "pl": "pllabdata_20240605_singlepsf_01_slmcube_20240605_seeing_0.4-10-scl1-scl0.5_mixed_files-combined.npz",
         "wf": "slmcube_20240605_seeing_0.4-10-scl1-scl0.5_mixed_files-combined.npz",
-        "model": "pl2wf2psf_data202407_model01_20260914-2022.keras",
-        #"model": "pl2wf2psf_data202407_model01_20260922-2318.keras",
+        #"model": "pl2wf2psf_data202407_model01_20260914-2022.keras",
+        "model": "pl2wf2psf_data202407_model01_20260922-2318.keras",
         #"model": "pl2wf2psf_data202407_model01_20260917-2026.keras",
         "max_samples": 100000,
     },
