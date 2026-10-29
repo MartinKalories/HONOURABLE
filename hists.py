@@ -28,12 +28,14 @@ CASES = {
     "Worse seeing": {
         "pl": "pllabdata_20240605_singlepsf_01_slmcube_20240605_seeing_0.4-10-scl1_rand_10K_01_files-combined.npz",
         "wf": "slmcube_20240605_seeing_0.4-10-scl1_rand_10K_01_files-combined.npz",
-        "model": "pl2wf2psf_data202407_model01_20260914-2022.keras",
+        #"model": "pl2wf2psf_data202407_model01_20260914-2022.keras",
+        "model": "pl2wf2psf_data202407_model01_20260917-2026.keras",
     },
     "Mixed seeing": {
         "pl": "pllabdata_20240605_singlepsf_01_slmcube_20240605_seeing_0.4-10-scl1-scl0.5_mixed_files-combined.npz",
         "wf": "slmcube_20240605_seeing_0.4-10-scl1-scl0.5_mixed_files-combined.npz",
-        "model": "pl2wf2psf_data202407_model01_20260922-2318.keras",
+        #"model": "pl2wf2psf_data202407_model01_20260922-2318.keras",
+        "model": "pl2wf2psf_data202407_model01_20260917-2026.keras",
         "max_samples": 100000,
     },
 }
@@ -311,7 +313,7 @@ def main():
     plot_histogram(
         rmse_results,
         xlabel="NN reconstruction RMSE [rad]",
-        title="Wavefront Reconstruction RMSE by Seeing Condition",
+        title="Wavefront Reconstruction RMSE for NNs trained on Worse Seeing Data",
         filename="nn_reconstruction_rmse_histogram.png"
     )
 
